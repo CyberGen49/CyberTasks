@@ -2,7 +2,7 @@
 # CyberTasks
 An easy to use to-do list and task scheduler webapp.
 
-![CyberTasks promotional image](/assets/promo.png)
+![CyberTasks promotional image](/web/assets/promo.png)
 
 **Note:** Large portions of the front-end app's styling and scripting is hosted separately. Those resources can be found in the [CyberGen49/web-resources](https://github.com/CyberGen49/web-resources) repository.
 
