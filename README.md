@@ -44,3 +44,5 @@ While the intention isn't for others to be hosting copies of CyberTasks, hosting
     sqlite3 main.db ".read database-schema.sql"
     ```
 1. Start the server with `npm start`
+
+The server is hosted on a nonstandard port, as it's meant to be proxied through a virtual host on a parent webserver like Apache.
