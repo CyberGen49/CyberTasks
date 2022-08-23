@@ -31,6 +31,20 @@ schema.on('exit', () => {
     console.log(`Schema file updated`);
 });
 
+// Update list pending and completed task numbers
+const db = new sqlite3('./main.db');
+const lists = db.prepare(`SELECT id FROM lists`).all();
+lists.forEach((list) => {
+    const tasks = db.prepare(`SELECT is_complete FROM tasks WHERE list_id = ?`).all(list.id);
+    let count = { pending: 0, complete: 0 };
+    tasks.forEach((task) => {
+        if (task.is_complete) count.complete++;
+        else count.pending++;
+    });
+    db.prepare(`UPDATE lists SET count_pending = ?, count_complete = ? WHERE id = ?`).run(count.pending, count.complete, list.id);
+});
+db.close();
+
 const srv = http.createServer((req, res) => {
     let db = false;
     // Parse paths
@@ -126,6 +140,13 @@ const srv = http.createServer((req, res) => {
         if (!postBody) return return_error('badRequest', `The request body doesn't contain valid JSON.`, 400);
         // A function for every API endpoint
         const handle_endpoint = {
+            'discordInfo': () => {
+                if (!is_method_valid('GET')) return;
+                const credentials = JSON.parse(fs.readFileSync('./credentials.json', 'utf-8'));
+                out.client_id = credentials.client_id;
+                out.redirect_url = credentials.redirect_url;
+                return end_api(out);
+            },
             'me': () => {
                 if (!is_method_valid('POST')) return;
                 const user = get_active_user();
@@ -158,7 +179,6 @@ const srv = http.createServer((req, res) => {
                 if (!is_param_valid(hue, (hue >= 0 && hue <= 360))) return;
                 out.id = Date.now();
                 db.prepare('INSERT INTO lists (id, owner, name, hue) VALUES (?, ?, ?, ?)').run(out.id, user.id, name, hue);
-                db.prepare('UPDATE users SET list_count = list_count + 1 WHERE id = ?').run(user.id);
                 return end_api(out, 201);
             },
             'lists/edit': () => {
@@ -172,19 +192,18 @@ const srv = http.createServer((req, res) => {
                 if (!is_param_valid(name, (name.length > 0 && name.length < 64)))
                     return;
                 if (!is_param_valid(hue, (hue >= 0 && hue <= 360))) return;
+                out.id = id;
                 db.prepare(`UPDATE lists SET name = ?, hue = ? WHERE id = ? AND owner = ?`).run(name, hue, id, user.id);
                 return end_api(out);
             },
             'lists/delete': () => {
                 if (!is_method_valid('POST')) return;
                 const user = get_active_user();
-                console.log(user)
                 if (!user) return;
                 const id = params.get('id');
                 if (!is_param_valid(id, db.prepare('SELECT id FROM lists WHERE owner = ? AND id = ?').get(user.id, id))) return;
                 db.prepare('DELETE FROM lists WHERE id = ? AND owner = ?').run(id, user.id);
                 db.prepare('DELETE FROM tasks WHERE list_id = ? AND owner = ?').run(id, user.id);
-                db.prepare('UPDATE users SET list_count = list_count - 1 WHERE id = ?').run(user.id);
                 return end_api(out);
             },
             'tasks/create': () => {
@@ -197,6 +216,7 @@ const srv = http.createServer((req, res) => {
                 if (!is_param_valid(name, (name.length > 0 && name.length < 256))) return;
                 out.id = Date.now();
                 db.prepare('INSERT INTO tasks (id, list_id, owner, name) VALUES (?, ?, ?, ?)').run(out.id, listId, user.id, name);
+                db.prepare('UPDATE lists SET count_pending = count_pending + 1 WHERE id = ?').run(listId);
                 return end_api(out, 201);
             },
             'tasks/toggleComplete': () => {
@@ -210,6 +230,18 @@ const srv = http.createServer((req, res) => {
                 out.id = taskId;
                 out.is_complete = newCompletionStatus;
                 db.prepare('UPDATE tasks SET is_complete = ? WHERE id = ?').run(newCompletionStatus, taskId);
+                db.prepare('UPDATE lists SET count_pending = count_pending - 1 WHERE id = ?').run(listId);
+                db.prepare('UPDATE lists SET count_complete = count_complete + 1 WHERE id = ?').run(listId);
+                return end_api(out);
+            },
+            'tasks/delete': () => {
+                if (!is_method_valid('POST')) return;
+                const user = get_active_user();
+                if (!user) return;
+                const taskId = params.get('id');
+                if (!is_param_valid(taskId, db.prepare(`SELECT id FROM tasks WHERE owner = ? AND id = ?`).get(user.id, taskId))) return;
+                db.prepare('DELETE FROM tasks WHERE owner = ? AND id = ?').run(user.id, taskId);
+                db.prepare('UPDATE lists SET count_pending = count_pending - 1 WHERE id = ?').run(taskId);
                 return end_api(out);
             },
             'tasks/pending': () => {
@@ -257,7 +289,7 @@ const srv = http.createServer((req, res) => {
                 'client_secret': credentials.client_secret,
                 'grant_type': 'authorization_code',
                 'code': params.get('code'),
-                'redirect_uri': `https://${credentials.redirect_domain}/discord-callback`
+                'redirect_uri': credentials.redirect_url
             })
         })).json();
         // Respond with an error if there's no access token

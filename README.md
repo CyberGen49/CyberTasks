@@ -21,14 +21,14 @@ While the intention isn't for others to be hosting copies of CyberTasks, hosting
     {
         "client_id": "...",
         "client_secret": "...",
-        "redirect_domain": "...",
+        "redirect_url": "...",
         "allow_new_users": false
     }
     ```
 1. Update each field of the file by replacing `...`:
     * `client_id` is your application's client ID
     * `client_secret` is your application's client secret
-    * `redirect_domain` is the domain you plan to use for the site, like `tasks.example.com`
+    * `redirect_url` is the same URL that you added to your application
     * `allow_new_users` defines whether unapproved users are allowed to sign in or not
 1. If `allow_new_users` is set to `false`, create another file named `allowedUsers.json` and list the Discord user IDs of the users you want to grant access to, like so:
     ```json

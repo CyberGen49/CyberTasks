@@ -12,17 +12,6 @@ CREATE TABLE IF NOT EXISTS "api_keys" (
 	"scopes"	TEXT NOT NULL,
 	"key"	INTEGER NOT NULL UNIQUE
 );
-CREATE TABLE IF NOT EXISTS "tasks" (
-	"id"	INTEGER NOT NULL UNIQUE,
-	"list_id"	INTEGER NOT NULL,
-	"owner"	INTEGER NOT NULL,
-	"name"	TEXT NOT NULL,
-	"due_date"	INTEGER,
-	"steps"	TEXT DEFAULT '{}',
-	"desc"	TEXT,
-	"is_complete"	INTEGER NOT NULL DEFAULT 0,
-	"is_starred"	INTEGER NOT NULL DEFAULT 0
-);
 CREATE TABLE IF NOT EXISTS "lists" (
 	"id"	INTEGER NOT NULL UNIQUE,
 	"owner"	INTEGER NOT NULL,
@@ -32,12 +21,24 @@ CREATE TABLE IF NOT EXISTS "lists" (
 	"count_pending"	INTEGER NOT NULL DEFAULT 0,
 	"count_complete"	INTEGER NOT NULL DEFAULT 0
 );
+CREATE TABLE IF NOT EXISTS "tasks" (
+	"id"	INTEGER NOT NULL UNIQUE,
+	"list_id"	INTEGER NOT NULL,
+	"owner"	INTEGER NOT NULL,
+	"name"	TEXT NOT NULL,
+	"due_date"	INTEGER,
+	"steps"	TEXT DEFAULT '[]',
+	"desc"	TEXT,
+	"is_complete"	INTEGER NOT NULL DEFAULT 0,
+	"is_repeat"	INTEGER NOT NULL DEFAULT 0,
+	"repeat_unit"	TEXT,
+	"repeat_count"	INTEGER
+);
 CREATE TABLE IF NOT EXISTS "users" (
 	"id"	INTEGER NOT NULL UNIQUE,
 	"discord_id"	TEXT NOT NULL UNIQUE,
 	"name"	TEXT NOT NULL,
 	"discriminator"	INTEGER NOT NULL,
 	"picture"	TEXT,
-	"list_count"	INTEGER NOT NULL DEFAULT 1,
 	"is_new"	INTEGER NOT NULL DEFAULT 1
 );

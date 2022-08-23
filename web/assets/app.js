@@ -13,6 +13,13 @@ window.addEventListener('load', async() => {
         if (res.error) loginError = res.error;
         if (res.token) localStorageObjSet('auth', { token: res.token });
     }
+    const showLoginPage = async() => {
+        const res = await fetch('/api/discordInfo');
+        const credentials = await res.json();
+        _id('signInDiscord').href = `https://discord.com/api/oauth2/authorize?client_id=${credentials.client_id}&redirect_uri=${encodeURIComponent(credentials.redirect_url)}&response_type=code&scope=identify`;
+        localStorageWipe();
+        _id('login').classList.add('loaded');
+    }
     // Get authentication details from localstorage
     const auth = localStorageObjGet('auth');
     // If a token is saved
@@ -29,15 +36,9 @@ window.addEventListener('load', async() => {
             localStorageObjSet('user', user);
             _id('login').style.display = 'none';
             init();
-        } else {
-            localStorageWipe();
-            _id('login').classList.add('loaded');
-        }
+        } else showLoginPage();
     // Otherwise, show the login page
-    } else {
-        localStorageWipe();
-        _id('login').classList.add('loaded');
-    }
+    } else showLoginPage();
     // Handle login errors
     switch (loginError) {
         case 'missingCode':
@@ -70,6 +71,22 @@ window.addEventListener('load', async() => {
     window.history.replaceState(null, '', '/');
 });
 
+function showBanner(text, icon, timeout = 5000) {
+    _id('banner').innerHTML = `
+        ${(icon) ? `<div class="icon">${icon}</div>`:''}
+        <div class="text">${text}</div>
+    `;
+    _id('banner').classList.add('visible');
+    setTimeout(() => {
+        _id('banner').classList.remove('visible');
+    }, timeout);
+}
+
+async function copyText(text) {
+    showBanner('Text copied to clipboard', 'content_copy');
+    return navigator.clipboard.writeText(text);
+}
+
 async function call_api(endpoint, data = {}, method = 'POST') {
     Object.assign(data, { token: token });
     const res = await fetch(`/api/${endpoint}`, {
@@ -100,6 +117,7 @@ async function call_api(endpoint, data = {}, method = 'POST') {
     return json;
 }
 
+let lists = [];
 let listsById = {};
 async function updateLists() {
     _id('lists').innerHTML = '';
@@ -116,9 +134,13 @@ async function updateLists() {
         `;
         return;
     }
-    let lists = res.lists;
+    listsById = [];
+    lists = res.lists;
     lists.sort((a, b) => {
         return b.id-a.id;
+    });
+    lists.sort((a, b) => {
+        return a.sort_pos-b.sort_pos;
     });
     lists.forEach((list) => {
         listsById[list.id] = list;
@@ -161,22 +183,19 @@ async function updateLists() {
                                 updateLists();
                             }
                         }
-                    }])
+                    }]);
                 }
             }, { type: 'sep' }, {
                 type: 'item',
                 name: 'Copy list ID',
                 icon: 'code',
                 action: () => {
-                    navigator.clipboard.writeText(list.id);
+                    copyText(list.id);
                 }
             }]);
         });
     });
-}
-
-async function editList(list) {
-    // ...
+    return;
 }
 
 let changeListTimeout;
@@ -209,6 +228,7 @@ async function changeActiveList(list, force = false, specialType = false) {
             return;
         }
         activeList = list;
+        localStorageObjSet('activeList', { id: list.id });
         if (res.tasks.length == 0) {
             _id('tasks').innerHTML = `
                 <div class="empty col gap-8 align-center">
@@ -230,21 +250,61 @@ async function changeActiveList(list, force = false, specialType = false) {
                 </button>
             `);
             _id(id).addEventListener('click', () => {
-                showPopup('Edit task', 'Coming soon™', [{
-                    label: 'Done',
-                    primary: true,
-                    escape: true
-                }]);
+                editTask(task);
             });
-            _id(id).addEventListener('contextmenu', () => {
+            _id(id).addEventListener('contextmenu', (e) => {
+                e.preventDefault();
                 showContext([{
-
-                }])
+                    type: 'item',
+                    name: 'Edit task...',
+                    icon: 'edit',
+                    action: () => {
+                        editTask(task);
+                    }
+                }, {
+                    type: 'item',
+                    name: 'Delete task...',
+                    icon: 'delete',
+                    action: () => {
+                        showPopup(`Delete task`, `
+                            <p>Are you sure you want to delete this task?</p>
+                            <p style="color: var(--danger)">This action can't be undone!</p>
+                        `, [{
+                            label: 'No',
+                            escape: true
+                        }, {
+                            label: 'Yes',
+                            primary: true,
+                            action: async() => {
+                                _id(id).style.display = 'none';
+                                const res = await call_api(`tasks/delete?id=${task.id}`);
+                                if (res.status == 'good')
+                                    _id(id).remove();
+                                else
+                                    _id(id).style.display = '';
+                            }
+                        }]);
+                    }
+                }, {
+                    type: 'item',
+                    name: 'Move task...',
+                    icon: 'drive_file_move',
+                    action: () => {
+                        // ...
+                    }
+                }, { type: 'sep' }, {
+                    type: 'item',
+                    name: 'Copy task ID',
+                    icon: 'code',
+                    action: () => {
+                        copyText(task.id);
+                    }
+                }]);
             });
             const onComplete = async() => {
                 _id(id).style.display = 'none';
                 const res = await call_api(`tasks/toggleComplete?id=${task.id}`);
-                if (res)
+                if (res.status == 'good')
                     _id(id).remove();
                 else
                     _id(id).style.display = '';
@@ -265,12 +325,177 @@ async function changeActiveList(list, force = false, specialType = false) {
     }, 200);
 }
 
+function addHueCircles(el, parent) {
+    let hueCircles = [];
+    const hues = [ 0, 25, 50, 110, 160, 200, 240, 280, 320 ];
+    let tmp = [];
+    hues.forEach((hue) => {
+        tmp.push(`
+            <button class="hueCircle changeColours" style="--fgHue: ${hue}" data-hue="${hue}"></button>
+        `);
+        if (tmp.length == 3) {
+            hueCircles.push(`<div class="row gap-10">${tmp.join('')}</div>`);
+            tmp = [];
+        }
+    });
+    if (tmp.length > 0)
+        hueCircles.push(`<div class="row gap-10">${tmp.join('')}</div>`);
+    el.insertAdjacentHTML('beforeend', hueCircles.join(''));
+    [..._class(`hueCircle`)].forEach((el) => {
+        el.addEventListener('click', () => {
+            [..._class('hueCircle')].forEach((circle) => {
+                circle.classList.remove('selected');
+            });
+            el.classList.add('selected');
+            parent.classList.add('changeColours');
+            parent.style.setProperty('--fgHue', el.dataset.hue);
+        });
+    });
+}
+async function createList() {
+    const createId = randomHex();
+    const hueCircleContId = randomHex();
+    const id = showPopup('New list', `
+        <div class="col">
+            <div class="row">
+                <div class="input labeled" style="width: 100%">
+                    <label>List name</label>
+                    <input id="newListName" class="textbox" type="text" autocomplete="off">
+                </div>
+            </div>
+            <div id="${hueCircleContId}" class="row justify-center gap-10"></div>
+        </div>
+    `, [{
+        label: 'Cancel',
+        escape: true
+    }, {
+        label: 'Create',
+        primary: true,
+        disabled: true,
+        id: createId,
+        action: async() => {
+            const res = await call_api('lists/create', {
+                name: _id('newListName').value,
+                hue: parseInt(_qs(`.hueCircle.selected`).dataset.hue)
+            });
+            if (res) updateLists();
+        }
+    }]);
+    addHueCircles(_id(hueCircleContId), _id(id));
+    _class('hueCircle')[Math.round(Math.random()*(9-1))].click();
+    _id('newListName').addEventListener('input', () => {
+        const value = _id('newListName').value;
+        _id(createId).disabled = true;
+        if (value.length > 0 && value.length < 64 )
+            _id(createId).disabled = false;
+    });
+    _id('newListName').focus();
+    _id(id).addEventListener('keypress', (e) => {
+        if (e.code == 'Enter') _id(createId).click();
+    });
+}
+async function editList(list) {
+    const doneId = randomHex();
+    const hueCircleContId = randomHex();
+    const id = showPopup(`Edit <span style="color: var(--f85)">${list.name}</span>`, `
+        <div class="col">
+            <div class="row">
+                <div class="input labeled" style="width: 100%">
+                    <label>List name</label>
+                    <input id="listName" class="textbox" type="text" autocomplete="off">
+                </div>
+            </div>
+            <div id="${hueCircleContId}" class="row justify-center gap-10"></div>
+        </div>
+    `, [{
+        label: 'Cancel',
+        escape: true
+    }, {
+        label: 'Done',
+        primary: true,
+        disabled: true,
+        id: doneId,
+        action: async() => {
+            const res = await call_api(`lists/edit?id=${list.id}`, {
+                name: _id('listName').value,
+                hue: parseInt(_qs(`.hueCircle.selected`).dataset.hue)
+            });
+            if (res) {
+                await updateLists();
+                if (res.id == activeList.id)
+                    changeActiveList(listsById[list.id], true);
+            }
+        }
+    }]);
+    addHueCircles(_id(hueCircleContId), _id(id));
+    try {
+        _qs(`.hueCircle[data-hue="${parseInt(list.hue)}"]`).click();
+    } catch(e) {
+        _class('hueCircle')[0].click();
+    }
+    _id('listName').addEventListener('input', () => {
+        const value = _id('listName').value;
+        _id(doneId).disabled = true;
+        if (value.length > 0 && value.length < 64 )
+            _id(doneId).disabled = false;
+    });
+    _id('listName').value = list.name;
+    _id('listName').dispatchEvent(new Event('input'));
+    _id('listName').focus();
+    setTimeout(() => {
+        _id('listName').selectionStart = _id('listName').value.length;
+        _id('listName').selectionEnd = _id('listName').value.length;
+    }, 50);
+    _id(id).addEventListener('keypress', (e) => {
+        if (e.code == 'Enter') _id(doneId).click();
+    });
+}
+
+async function editTask(task) {
+    showPopup('Edit task', 'Coming soon™', [{
+        label: 'Done',
+        primary: true,
+        escape: true
+    }]);
+}
+
 // Run once login is successful
 async function init() {
     // Update profile elements
     _id('avatar').src = `https://cdn.discordapp.com/avatars/${user.discord_id}/${user.picture}.png?size=512`;
     _id('username').innerText = user.name;
     _id('discriminator').innerText = `#${user.discriminator}`;
+    // Add profile context menu
+    _id('avatar').addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showContext([{
+            type: 'item',
+            name: 'Copy user ID',
+            icon: 'code',
+            action: () => {
+                copyText(user.id);
+            }
+        }, {
+            type: 'item',
+            name: 'Copy access token...',
+            icon: 'code',
+            action: () => {
+                showPopup(`Copy access token`, `
+                    <p>Are you sure you want to copy your access token?</p>
+                    <p style="color: var(--danger)">Your access token grants <b>full access</b> to your account, including all lists and tasks, active sessions, and account settings. <b>Never give this token to anyone.</b></p>
+                `, [{
+                    label: 'Cancel',
+                    escape: true
+                }, {
+                    label: 'Copy',
+                    primary: true,
+                    action: () => {
+                        copyText(token);
+                    }
+                }])
+            }
+        }]);
+    });
     // Handle sign out button
     _id('signOut').addEventListener('click', () => {
         showPopup('Sign out?', `Are you sure you want to sign out? Any unsaved changes will be lost.`, [{
@@ -288,69 +513,7 @@ async function init() {
         }]);
     });
     // Handle create list button
-    _id('createList').addEventListener('click', () => {
-        let hueCircles = [];
-        const hues = [ 0, 25, 50, 110, 160, 200, 240, 280, 320 ]
-        let tmp = [];
-        hues.forEach((hue) => {
-            tmp.push(`
-                <button class="hueCircle changeColours" style="--fgHue: ${hue}" data-hue="${hue}"></button>
-            `);
-            if (tmp.length == 3) {
-                hueCircles.push(`<div class="row gap-10">${tmp.join('')}</div>`);
-                tmp = [];
-            }
-        });
-        if (tmp.length > 0)
-            hueCircles.push(`<div class="row gap-10">${tmp.join('')}</div>`);
-        const createId = randomHex();
-        const id = showPopup('New list', `
-            <div class="col">
-                <div class="row">
-                    <div class="input labeled" style="width: 100%">
-                        <label>List name</label>
-                        <input id="newListName" class="textbox" type="text" autocomplete="off">
-                    </div>
-                </div>
-                <div class="row justify-center gap-10">
-                    ${hueCircles.join('')}
-                </div>
-            </div>
-        `, [{
-            label: 'Cancel',
-            escape: true
-        }, {
-            label: 'Create',
-            primary: true,
-            disabled: true,
-            id: createId,
-            action: async() => {
-                const res = await call_api('lists/create', {
-                    name: _id('newListName').value,
-                    hue: parseInt(_qs(`.hueCircle.selected`).dataset.hue)
-                });
-                if (res) updateLists();
-            }
-        }]);
-        [..._class(`hueCircle`)].forEach((el) => {
-            el.addEventListener('click', () => {
-                [..._class('hueCircle')].forEach((circle) => {
-                    circle.classList.remove('selected');
-                });
-                el.classList.add('selected');
-                _id(id).classList.add('changeColours');
-                _id(id).style.setProperty('--fgHue', el.dataset.hue);
-            });
-        });
-        _class('hueCircle')[Math.round(Math.random()*(hueCircles.length-1))].click();
-        _id('newListName').addEventListener('input', () => {
-            const value = _id('newListName').value;
-            _id(createId).disabled = true;
-            if (value.length > 0 && value.length < 64 )
-                _id(createId).disabled = false;
-        });
-        _id('newListName').focus();
-    });
+    _id('createList').addEventListener('click', createList);
     // Handle list sort button
     _id('sortLists').addEventListener('click', () => {
         showPopup('Sort lists', `
@@ -416,7 +579,7 @@ async function init() {
         if (res.id) changeActiveList(activeList, true);
     });
     // Handle the edit list button
-    _id('listEdit').addEventListener('click', async() => {
+    _id('listEdit').addEventListener('click', () => {
         editList(activeList);
     });
     // Handle window resizing
@@ -429,8 +592,10 @@ async function init() {
     });
     // Fetch lists
     await updateLists();
-    // Select the first list
-    _class('listEntry', _id('lists'))[0].click();
+    // Select the last active list or the top list
+    const lastActiveList = localStorageObjGet('activeList');
+    if (lists.length > 0)
+        changeActiveList(listsById[lastActiveList.id] || lists[0]);
     // Show the private beta notice
     if (!localStorageObjGet('seenBetaNotice')) {
         showPopup(`Hey`, `
