@@ -40,6 +40,7 @@ While the intention isn't for others to be hosting copies of CyberTasks, hosting
     * **User IDs must be enclosed in quotes to work properly**
 1. [Download and install SQLite](https://www.sqlite.org/download.html)
 1. In your terminal (still in the project directory), create and structure the database with this command:
-```
-sqlite3 main.db ".read database-schema.sql"
-```
+    ```
+    sqlite3 main.db ".read database-schema.sql"
+    ```
+1. Start the server with `npm start`
