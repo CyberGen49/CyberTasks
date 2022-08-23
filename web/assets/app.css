@@ -1,0 +1,424 @@
+
+@import 'https://src.simplecyber.org/base.css';
+
+body {
+    overscroll-behavior-y: contain;
+}
+
+#login {
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 100%;
+    padding: 10px;
+    z-index: 2;
+    background: var(--b15);
+}
+
+#login .title {
+    font-family: 'Quicksand';
+    font-weight: 600;
+    font-size: 46px;
+    text-align: center;
+}
+#login .buttons {
+    height: 0px;
+    opacity: 0;
+}
+#login.loaded .title {
+    font-size: 36px;
+}
+#login.loaded .buttons {
+    height: auto;
+    opacity: 1;
+}
+#login small {
+    color: var(--danger);
+    max-width: 500px;
+    text-align: center;
+}
+
+#main {
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    display: flex;
+}
+
+#sidebar {
+    width: 300px;
+    height: 100%;
+    padding: 10px;
+    overflow: hidden;
+    background: var(--b18);
+    box-shadow: 2px 0px 5px 0px rgba(0, 0, 0, 0.2);
+    z-index: 5;
+    flex-shrink: 0;
+}
+#sidebar .top {
+    display: none;
+    height: 60px;
+    margin-bottom: -25px;
+}
+#sidebarDimming {
+    position: fixed;
+    top: 0px;
+    left: 0px;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    transition: 0.3s ease-in-out;
+    opacity: 0;
+    visibility: hidden;
+    z-index: 4;
+}
+@media screen and (max-width: 750px) {
+    #sidebar {
+        position: fixed;
+        top: 0px;
+        left: -350px;
+        transition: 0.3s var(--bezier);
+    }
+    #sidebar.visible {
+        left: 0px;
+    }
+    #sidebar .top {
+        display: flex;
+    }
+    #sidebarDimming.visible {
+        opacity: 1;
+        visibility: visible;
+    }
+    #menuOpen {
+        display: flex;
+    }
+}
+#sidebar .profileCard {
+    width: 100%;
+    background: var(--b25);
+    border-radius: 12px;
+    padding: 10px 12px;
+    color: var(--b60);
+    font-size: 15px;
+}
+#sidebar .profileCard #avatar {
+    display: inline;
+    height: 48px;
+    width: 48px;
+    border-radius: 50%;
+    user-select: none;
+}
+#sidebar .profileCard .nameCont {
+    font-size: 16px;
+    color: var(--b100);
+}
+#sidebar .profileCard .nameCont span {
+    word-break: break-word;
+}
+#sidebar .profileCard .nameCont #discriminator {
+    color: var(--b70);
+}
+
+#sidebar #listsCont {
+    padding: 10px;
+    margin: -10px 0px -10px -10px;
+    width: calc(100% + 20px); 
+    flex-grow: 1;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    user-select: none;
+}
+#sidebar #lists {
+    display: flex;
+    flex-direction: column;
+}
+#sidebar .listEntry {
+    all: unset;
+    flex-shrink: 0;
+    height: 42px;
+    padding: 0px 12px;
+    padding-top: 2px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    color: var(--f90);
+    border-radius: 16px;
+    transition: 0.1s ease-in-out;
+}
+#sidebar .listEntry::before {
+    width: 36px;
+    display: flex;
+    justify-content: center;
+    font-family: 'Material Symbols';
+    font-size: 36px;
+    color: var(--f75);
+    content: 'list';
+    margin-top: -2px;
+}
+#sidebar .listEntry .label {
+    padding: 3px 0px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+#sidebar #listStarred.listEntry::before {
+    margin-top: -4px;
+    content: 'star';
+    font-size: 40px;
+}
+#sidebar #listSchedule.listEntry::before {
+    margin-top: -2px;
+    content: 'date_range';
+}
+.canHover #sidebar .listEntry:hover,
+#sidebar .listEntry:focus-visible {
+    background: var(--b25);
+    box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.2);
+}
+#sidebar .listEntry:active {
+    background: var(--b30) !important;
+    transform: scale(0.95);
+}
+
+#listCont {
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+    transition: 0.1s ease-in-out;
+}
+#listCont .topbar {
+    height: 58px;
+    padding: 0px 15px;
+    background: var(--b15);
+    font-family: 'Quicksand';
+    font-size: 26px;
+    font-weight: bold;
+    color: var(--f90);
+    flex-shrink: 0;
+    flex-wrap: nowrap;
+    transition: 0.1s ease-in-out;
+    z-index: 2;
+}
+#listCont .topbar.scrolled {
+    box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.2);
+}
+#topbarTitle {
+    padding: 5px 0px;
+    flex-grow: 1;
+    width: 0px;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    opacity: 0;
+    transition: 0.1s ease-in-out;
+    visibility: hidden;
+}
+.topbar.scrolled #topbarTitle {
+    opacity: 1;
+    visibility: visible;
+}
+.topbar .btn {
+    --w: 44px;
+}
+#list {
+    height: 100%;
+    flex-shrink: 1;
+    transition: 0.1s ease-in-out;
+    opacity: 0;
+    overflow: hidden;
+}
+#list.visible {
+    opacity: 1;
+}
+#listScrollArea {
+    overflow-y: auto;
+    padding: 10px 15px;
+}
+#tasksCont {
+    height: 100%;
+    flex-shrink: 1;
+    gap: 0px;
+}
+#tasksCont .header {
+    padding: 5px 0px 5px 0px;
+    font-family: 'Quicksand';
+    font-size: 40px;
+    font-weight: 600;
+    color: var(--f80);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    user-select: none;
+}
+#tasks {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    opacity: 0;
+    transition: 0.1s ease-in-out;
+}
+#tasks.visible {
+    opacity: 1;
+}
+#tasks .empty {
+    padding: 20px 10px;
+    color: var(--b70);
+    text-align: center;
+    user-select: none;
+}
+#tasks .empty .icon {
+    font-family: 'Material Icons Outlined';
+    font-size: 54px;
+}
+#tasks .empty .title {
+    font-family: 'Quicksand';
+    font-size: 26px;
+    font-weight: 600;
+}
+#tasks .empty .desc {
+    line-height: 1.2;
+}
+#tasks .task {
+    all: unset;
+    padding-right: 12px;
+    display: flex;
+    align-items: center;
+    background: var(--b20);
+    border-radius: 8px;
+    --endRad: 20px;
+    transition: 0.1s ease-in-out;
+    user-select: none;
+}
+#tasks .task:first-child {
+    border-top-left-radius: var(--endRad);
+    border-top-right-radius: var(--endRad);
+}
+#tasks .task:last-child {
+    border-bottom-left-radius: var(--endRad);
+    border-bottom-right-radius: var(--endRad);
+}
+.canHover #tasks .task:hover,
+#tasks .task:focus-visible {
+    background: var(--b25);
+    /* box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.2); */
+}
+#tasks .task:active {
+    background: var(--b30) !important;
+}
+#tasks .task .radio,
+#addTaskBox .radio {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 54px;
+    height: 52px;
+    border-radius: 16px;
+    transition: 0.1s ease-in-out;
+}
+.isTouch #tasks .task .radio {
+    height: 58px;
+}
+#tasks .task .radio:after,
+#addTaskBox .radio:after {
+    content: 'radio_button_unchecked';
+    font-family: 'Material Symbols';
+    font-size: 32px;
+    color: var(--b70);
+}
+.canHover #tasks .task .radio:hover:after,
+#tasks .task .radio:focus-visible:after,
+#tasks .task .radio:active:after {
+    content: 'check_circle' !important;
+    color: var(--f80) !important;
+}
+#tasks .task .label {
+    padding: 12px 0px;
+    padding-bottom: 11px;
+    display: flex;
+    flex-direction: column;
+    line-height: 1.3;
+}
+#tasks .task .label .desc {
+    font-size: 15px;
+    color: var(--b70);
+    line-height: 1.2;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+#addTaskCont {
+    padding: 15px 15px;
+    padding-top: 10px;
+}
+#addTaskCont.scrolled {
+    box-shadow: 0px -2px 5px 0px rgba(0, 0, 0, 0.2);
+}
+#addTaskBox {
+    padding-right: 12px;
+    display: flex;
+    align-items: center;
+    background: var(--b20);
+    border-radius: 20px;
+    transition: 0.1s ease-in-out;
+    box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.2);
+}
+.canHover #addTaskBox:hover,
+#addTaskBox:focus-within {
+    background: var(--b25);
+}
+#addTaskBox .input {
+    padding: 10px 0px;
+    padding-bottom: 9px;
+    min-height: 40px;
+    max-height: calc(calc(calc(16px * 5) * 1.2) + 19px);
+    line-height: 1.2;
+    max-width: 100%;
+    cursor: text;
+    display: flex;
+    align-items: center;
+    overflow-y: auto;
+    overflow-x: hidden;
+    word-break: break-word;
+}
+#addTaskBox .input:focus-visible {
+    outline: none;
+}
+
+.hueCircle {
+    all: unset;
+    --w: 32px;
+    width: var(--w);
+    height: var(--w);
+    border-radius: 50%;
+    background: var(--f80);
+    box-shadow: 0px 2px 3px 1px rgba(0, 0, 0, 0.4);
+    transition: 0.1s ease-in-out;
+}
+.hueCircle.selected {
+    transform: scale(1.2);
+}
+.canHover .hueCircle:hover:not(.selected),
+.hueCircle:focus-visible:not(.selected) {
+    background: var(--f85);
+    transform: scale(1.1);
+}
+.hueCircle:active:not(.selected) {
+    transform: scale(0.9) !important;
+}
+
+::-webkit-scrollbar {
+    background: transparent;
+}

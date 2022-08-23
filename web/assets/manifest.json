@@ -1,0 +1,35 @@
+{
+    "id": "/",
+    "start_url": "/",
+    "name": "CyberTasks",
+    "short_name": "Tasks",
+    "description": "An easy to use to-do list and task scheduler app.",
+    "categories": ["utilities", "productivity", "personalization"],
+    "display": "standalone",
+    "background_color": "hsl(230, 8%, 15%)",
+    "theme_color": "hsl(230, 8%, 18%)",
+    "icons": [{
+        "src": "/assets/icon.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "any"
+    }, {
+        "src": "/assets/icon-maskable.png",
+        "sizes": "512x512",
+        "type": "image/png",
+        "purpose": "maskable"
+    }],
+    "screenshots": [{
+        "src": "/assets/promo.png",
+        "sizes": "1400x900",
+        "type": "image/png"
+    }, {
+        "src": "/assets/screenshot-wide.png",
+        "sizes": "1180x820",
+        "type": "image/png"
+    }, {
+        "src": "/assets/screenshot-tall.png",
+        "sizes": "1170x2532",
+        "type": "image/png"
+    }]
+}

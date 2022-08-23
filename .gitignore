@@ -1,0 +1,4 @@
+credentials.json
+allowedUsers.json
+*.db
+*.db-*

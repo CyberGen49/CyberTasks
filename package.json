@@ -1,0 +1,18 @@
+{
+  "name": "cybertasks",
+  "version": "1.0.0",
+  "description": "An easy to use to-do list and task scheduler app.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^7.5.3",
+    "body": "^5.1.0",
+    "cli-color": "^2.0.2",
+    "mime": "^3.0.0",
+    "node-fetch": "^2.6.7"
+  },
+  "author": "CyberGen49",
+  "license": "ISC"
+}
