@@ -147,9 +147,10 @@ async function updateLists() {
         const elId = randomHex();
         _id('lists').insertAdjacentHTML('beforeend', `
             <button id="${elId}" class="listEntry ${(list.hue) ? `changeColours`:''}" style="${(list.hue) ? `--fgHue: ${list.hue}`:''}" data-id="${list.id}" title="${list.name}<br><small><em>Right click for actions...</em></small>">
-                <span class="label">${list.name}</span>
+                <span class="label"></span>
             </button>
         `);
+        _class('label', _id(elId))[0].innerText = list.name;
         _id(elId).addEventListener('click', () => {
             changeActiveList(list);
             _id('sidebarDimming').click();
@@ -198,9 +199,96 @@ async function updateLists() {
     return;
 }
 
+function showTask(task) {
+    const id = randomHex();
+    _id('tasks').insertAdjacentHTML('beforeend', `
+        <button id="${id}" class="task">
+            <div id="${id}-radio" class="radio" tabindex="0" title="Mark task as complete"></div>
+            <div class="label">
+                <div class="name">${task.name}</div>
+                ${(task.desc) ? `<div class="desc">${task.desc}</div>`:''}
+            </div>
+        </button>
+    `);
+    _id(id).addEventListener('click', () => {
+        editTask(task);
+    });
+    _id(id).addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        showContext([{
+            type: 'item',
+            name: 'Edit task...',
+            icon: 'edit',
+            action: () => {
+                editTask(task);
+            }
+        }, {
+            type: 'item',
+            name: 'Delete task...',
+            icon: 'delete',
+            action: () => {
+                showPopup(`Delete task`, `
+                    <p>Are you sure you want to delete this task?</p>
+                    <p style="color: var(--danger)">This action can't be undone!</p>
+                `, [{
+                    label: 'No',
+                    escape: true
+                }, {
+                    label: 'Yes',
+                    primary: true,
+                    action: async() => {
+                        _id(id).style.display = 'none';
+                        const res = await call_api(`tasks/delete?id=${task.id}`);
+                        if (res.status == 'good')
+                            _id(id).remove();
+                        else
+                            _id(id).style.display = '';
+                    }
+                }]);
+            }
+        }, {
+            type: 'item',
+            name: 'Move task...',
+            icon: 'drive_file_move',
+            action: () => {
+                // ...
+            }
+        }, { type: 'sep' }, {
+            type: 'item',
+            name: 'Copy task ID',
+            icon: 'code',
+            action: () => {
+                copyText(task.id);
+            }
+        }]);
+    });
+    const onComplete = async() => {
+        _id(id).style.display = 'none';
+        const res = await call_api(`tasks/toggleComplete?id=${task.id}`);
+        if (res.status == 'good')
+            _id(id).remove();
+        else
+            _id(id).style.display = '';
+    };
+    _id(`${id}-radio`).addEventListener('click', (e) => {
+        e.stopPropagation();
+        onComplete();
+    });
+    _id(`${id}-radio`).addEventListener('keyup', (e) => {
+        if (e.code == 'Space') {
+            e.stopPropagation();
+            onComplete();
+        }
+    });
+}
+function sortTasks() {
+    // https://stackoverflow.com/questions/34685316/reorder-html-elements-in-dom
+    // ...
+}
+
 let changeListTimeout;
 let activeList = { id: 0 };
-async function changeActiveList(list, force = false, specialType = false) {
+async function changeActiveList(list, force = false) {
     if (activeList.id == list.id && !force) return;
     clearTimeout(changeListTimeout);
     _id('list').classList.remove('visible');
@@ -239,87 +327,9 @@ async function changeActiveList(list, force = false, specialType = false) {
             `;
         }
         res.tasks.forEach((task) => {
-            const id = randomHex();
-            _id('tasks').insertAdjacentHTML('beforeend', `
-                <button id="${id}" class="task">
-                    <div id="${id}-radio" class="radio" tabindex="0" title="Mark task as complete"></div>
-                    <div class="label">
-                        <div class="name">${task.name}</div>
-                        ${(task.desc) ? `<div class="desc">${task.desc}</div>`:''}
-                    </div>
-                </button>
-            `);
-            _id(id).addEventListener('click', () => {
-                editTask(task);
-            });
-            _id(id).addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                showContext([{
-                    type: 'item',
-                    name: 'Edit task...',
-                    icon: 'edit',
-                    action: () => {
-                        editTask(task);
-                    }
-                }, {
-                    type: 'item',
-                    name: 'Delete task...',
-                    icon: 'delete',
-                    action: () => {
-                        showPopup(`Delete task`, `
-                            <p>Are you sure you want to delete this task?</p>
-                            <p style="color: var(--danger)">This action can't be undone!</p>
-                        `, [{
-                            label: 'No',
-                            escape: true
-                        }, {
-                            label: 'Yes',
-                            primary: true,
-                            action: async() => {
-                                _id(id).style.display = 'none';
-                                const res = await call_api(`tasks/delete?id=${task.id}`);
-                                if (res.status == 'good')
-                                    _id(id).remove();
-                                else
-                                    _id(id).style.display = '';
-                            }
-                        }]);
-                    }
-                }, {
-                    type: 'item',
-                    name: 'Move task...',
-                    icon: 'drive_file_move',
-                    action: () => {
-                        // ...
-                    }
-                }, { type: 'sep' }, {
-                    type: 'item',
-                    name: 'Copy task ID',
-                    icon: 'code',
-                    action: () => {
-                        copyText(task.id);
-                    }
-                }]);
-            });
-            const onComplete = async() => {
-                _id(id).style.display = 'none';
-                const res = await call_api(`tasks/toggleComplete?id=${task.id}`);
-                if (res.status == 'good')
-                    _id(id).remove();
-                else
-                    _id(id).style.display = '';
-            };
-            _id(`${id}-radio`).addEventListener('click', (e) => {
-                e.stopPropagation();
-                onComplete();
-            });
-            _id(`${id}-radio`).addEventListener('keyup', (e) => {
-                if (e.code == 'Space') {
-                    e.stopPropagation();
-                    onComplete();
-                }
-            });
+            showTask(task);
         });
+        sortTasks();
         _id('tasks').classList.add('visible');
         _id('listScrollArea').dispatchEvent(new Event('scroll'));
     }, 200);
@@ -576,7 +586,10 @@ async function init() {
         const res = await call_api(`tasks/create?list=${activeList.id}`, {
             name: value
         });
-        if (res.id) changeActiveList(activeList, true);
+        if (res.id) {
+            showTask(res.task);
+            sortTasks();
+        }
     });
     // Handle the edit list button
     _id('listEdit').addEventListener('click', () => {

@@ -177,8 +177,9 @@ const srv = http.createServer((req, res) => {
                 if (!is_param_valid(name, (name.length > 0 && name.length < 64)))
                     return;
                 if (!is_param_valid(hue, (hue >= 0 && hue <= 360))) return;
-                out.id = Date.now();
-                db.prepare('INSERT INTO lists (id, owner, name, hue) VALUES (?, ?, ?, ?)').run(out.id, user.id, name, hue);
+                id = Date.now();
+                db.prepare('INSERT INTO lists (id, owner, name, hue) VALUES (?, ?, ?, ?)').run(id, user.id, name, hue);
+                out.list = db.prepare('SELECT * FROM lists WHERE id = ?').get(id);
                 return end_api(out, 201);
             },
             'lists/edit': () => {
@@ -214,9 +215,10 @@ const srv = http.createServer((req, res) => {
                 const name = postBody.name;
                 if (!is_param_valid(listId, db.prepare('SELECT id FROM lists WHERE owner = ? AND id = ?').get(user.id, listId))) return;
                 if (!is_param_valid(name, (name.length > 0 && name.length < 256))) return;
-                out.id = Date.now();
-                db.prepare('INSERT INTO tasks (id, list_id, owner, name) VALUES (?, ?, ?, ?)').run(out.id, listId, user.id, name);
+                const id = Date.now();
+                db.prepare('INSERT INTO tasks (id, list_id, owner, name) VALUES (?, ?, ?, ?)').run(id, listId, user.id, name);
                 db.prepare('UPDATE lists SET count_pending = count_pending + 1 WHERE id = ?').run(listId);
+                out.task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
                 return end_api(out, 201);
             },
             'tasks/toggleComplete': () => {
