@@ -226,14 +226,14 @@ const srv = http.createServer((req, res) => {
                 const user = get_active_user();
                 if (!user) return;
                 const taskId = params.get('id');
-                const entry = db.prepare(`SELECT id, is_complete FROM tasks WHERE owner = ? AND id = ?`).get(user.id, taskId)
+                const entry = db.prepare(`SELECT id, list_id, is_complete FROM tasks WHERE owner = ? AND id = ?`).get(user.id, taskId)
                 if (!is_param_valid(taskId, entry)) return;
                 const newCompletionStatus = (!entry.is_complete) ? 1 : 0;
                 out.id = taskId;
                 out.is_complete = newCompletionStatus;
                 db.prepare('UPDATE tasks SET is_complete = ? WHERE id = ?').run(newCompletionStatus, taskId);
-                db.prepare('UPDATE lists SET count_pending = count_pending - 1 WHERE id = ?').run(listId);
-                db.prepare('UPDATE lists SET count_complete = count_complete + 1 WHERE id = ?').run(listId);
+                db.prepare('UPDATE lists SET count_pending = count_pending - 1 WHERE id = ?').run(entry.list_id);
+                db.prepare('UPDATE lists SET count_complete = count_complete + 1 WHERE id = ?').run(entry.list_id);
                 return end_api(out);
             },
             'tasks/delete': () => {

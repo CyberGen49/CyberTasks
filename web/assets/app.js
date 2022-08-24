@@ -586,7 +586,7 @@ async function init() {
         const res = await call_api(`tasks/create?list=${activeList.id}`, {
             name: value
         });
-        if (res.id) {
+        if (res.status == 'good') {
             showTask(res.task);
             sortTasks();
         }
