@@ -118,9 +118,13 @@ async function call_api(endpoint, data = {}, method = 'POST') {
 }
 
 let lists = [];
-let listsById = {};
+let listsById = (id) => {
+    for (const list of lists) {
+        if (list.id == id) return list;
+    }
+    return false;
+}
 async function updateLists() {
-    _id('lists').innerHTML = '';
     const res = await call_api('lists');
     if (!res) {
         _id('lists').innerHTML = `
@@ -134,82 +138,86 @@ async function updateLists() {
         `;
         return;
     }
-    listsById = [];
-    lists = res.lists;
-    lists.sort((a, b) => {
-        return b.id-a.id;
-    });
-    lists.sort((a, b) => {
-        return a.sort_pos-b.sort_pos;
-    });
-    lists.forEach((list) => {
-        listsById[list.id] = list;
-        const elId = randomHex();
-        _id('lists').insertAdjacentHTML('beforeend', `
-            <button id="${elId}" class="listEntry ${(list.hue) ? `changeColours`:''}" style="${(list.hue) ? `--fgHue: ${list.hue}`:''}" data-id="${list.id}" title="${list.name}<br><small><em>Right click for actions...</em></small>">
-                <span class="label"></span>
-            </button>
-        `);
-        _class('label', _id(elId))[0].innerText = list.name;
-        _id(elId).addEventListener('click', () => {
-            changeActiveList(list);
-            _id('sidebarDimming').click();
+    if (JSON.stringify(lists) !== JSON.stringify(res.lists)) {
+        lists = res.lists;
+        lists.sort((a, b) => {
+            return b.id-a.id;
         });
-        _id(elId).addEventListener('contextmenu', (e) => {
-            e.preventDefault();
-            showContext([{
-                type: 'item',
-                name: 'Edit list...',
-                icon: 'edit',
-                action: () => {
-                    editList(list);
-                }
-            }, {
-                type: 'item',
-                name: 'Delete list...',
-                icon: 'delete',
-                action: () => {
-                    showPopup(`Delete list`, `
-                        <p>Are you sure you want to delete <b>${list.name}</b> and <b>all</b> of its associated tasks?</p>
-                        <p style="color: var(--danger)">This action can't be undone!</p>
-                    `, [{
-                        label: 'No',
-                        escape: true
-                    }, {
-                        label: 'Yes',
-                        primary: true,
-                        action: async() => {
-                            const res = await call_api(`lists/delete?id=${list.id}`);
-                            if (res.status == 'good') {
-                                updateLists();
+        lists.sort((a, b) => {
+            return a.sort_pos-b.sort_pos;
+        });
+        _id('lists').innerHTML = '';
+        lists.forEach((list) => {
+            const elId = randomHex();
+            _id('lists').insertAdjacentHTML('beforeend', `
+                <button id="${elId}" class="listEntry ${(list.hue) ? `changeColours`:''}" style="${(list.hue) ? `--fgHue: ${list.hue}`:''}" data-id="${list.id}" title="${list.name}<br><small><em>Right click for actions...</em></small>">
+                    <span class="label"></span>
+                </button>
+            `);
+            _class('label', _id(elId))[0].innerText = list.name;
+            _id(elId).addEventListener('click', () => {
+                changeActiveList(list);
+                _id('sidebarDimming').click();
+            });
+            _id(elId).addEventListener('contextmenu', (e) => {
+                e.preventDefault();
+                showContext([{
+                    type: 'item',
+                    name: 'Edit list...',
+                    icon: 'edit',
+                    action: () => {
+                        editList(list);
+                    }
+                }, {
+                    type: 'item',
+                    name: 'Delete list...',
+                    icon: 'delete',
+                    action: () => {
+                        showPopup(`Delete list`, `
+                            <p>Are you sure you want to delete <b>${list.name}</b> and <b>all</b> of its associated tasks?</p>
+                            <p style="color: var(--danger)">This action can't be undone!</p>
+                        `, [{
+                            label: 'No',
+                            escape: true
+                        }, {
+                            label: 'Yes',
+                            primary: true,
+                            action: async() => {
+                                const res = await call_api(`lists/delete?id=${list.id}`);
+                                if (res.status == 'good') {
+                                    updateLists();
+                                }
                             }
-                        }
-                    }]);
-                }
-            }, { type: 'sep' }, {
-                type: 'item',
-                name: 'Copy list ID',
-                icon: 'code',
-                action: () => {
-                    copyText(list.id);
-                }
-            }]);
+                        }]);
+                    }
+                }, { type: 'sep' }, {
+                    type: 'item',
+                    name: 'Copy list ID',
+                    icon: 'code',
+                    action: () => {
+                        copyText(list.id);
+                    }
+                }]);
+            });
         });
-    });
+    }
     return;
 }
 
 function showTask(task) {
     const id = randomHex();
     _id('tasks').insertAdjacentHTML('beforeend', `
-        <button id="${id}" class="task">
+        <button id="${id}" class="task" data-id="${task.id}" data-due="${task.due_date}">
             <div id="${id}-radio" class="radio" tabindex="0" title="Mark task as complete"></div>
             <div class="label">
-                <div class="name">${task.name}</div>
-                ${(task.desc) ? `<div class="desc">${task.desc}</div>`:''}
+                <div id="${id}-name" class="name"></div>
+                ${(task.desc) ? `<div id="${id}-desc" class="desc"></div>`:''}
             </div>
         </button>
     `);
+    _id(`${id}-name`).innerText = task.name;
+    if (task.desc)
+        _id(`${id}-desc`).innerText = task.desc;
     _id(id).addEventListener('click', () => {
         editTask(task);
     });
@@ -239,10 +247,10 @@ function showTask(task) {
                     action: async() => {
                         _id(id).style.display = 'none';
                         const res = await call_api(`tasks/delete?id=${task.id}`);
-                        if (res.status == 'good')
+                        if (res.status == 'good') {
                             _id(id).remove();
-                        else
-                            _id(id).style.display = '';
+                            if (activeTask.id == task.id) hideEditTask();
+                        } else _id(id).style.display = '';
                     }
                 }]);
             }
@@ -283,24 +291,55 @@ function showTask(task) {
 }
 function sortTasks() {
     // https://stackoverflow.com/questions/34685316/reorder-html-elements-in-dom
-    // ...
+    const wrapper = _id('tasks');
+    const tasks = [...wrapper.children];
+    const sort_func = {
+        'created': (a, b) => {
+            return parseInt(a.dataset.id)-parseInt(b.dataset.id);
+        },
+        'az': (a, b) => {
+            const name = {
+                a: _qs('.name', a).innerText,
+                b: _qs('.name', b).innerText
+            }
+            return name.a.localeCompare(name.b, undefined, {
+                numeric: true,
+                sensitivity: 'base'
+            });
+        },
+        'due': (a, b) => {
+            a = parseInt(a.dataset.due) || 0;
+            b = parseInt(b.dataset.due) || 0;
+            return a-b;
+        }
+    }
+    tasks.sort(sort_func[activeList.sort_order]);
+    if (activeList.sort_reverse) tasks.reverse();
+    tasks.forEach(task => {
+        wrapper.appendChild(task);
+    });
 }
 
 let changeListTimeout;
 let activeList = { id: 0 };
+let tasks = [];
 async function changeActiveList(list, force = false) {
-    if (activeList.id == list.id && !force) return;
+    const isSameList = (activeList.id == list.id);
+    if (isSameList && !force) return;
     clearTimeout(changeListTimeout);
-    _id('list').classList.remove('visible');
-    _id('listScrollArea').scrollTop = 0;
-    _id('tasks').classList.remove('visible');
+    if (!isSameList) {
+        _id('list').classList.remove('visible');
+        _id('listScrollArea').scrollTop = 0;
+        _id('tasks').classList.remove('visible');
+        hideEditTask();
+        activeTask = { id: 0 };
+    }
     document.title = list.name;
     changeListTimeout = setTimeout(async() => {
         _id('listCont').classList.add('changeColours');
         _id('listCont').style.setProperty('--fgHue', list.hue);
         _id('topbarTitle').innerText = list.name;
         _id('listHeaderTitle').innerText = list.name;
-        _id('tasks').innerHTML = '';
         _id('list').classList.add('visible');
         const res = await call_api(`tasks/pending?list=${list.id}`);
         if (!res) {
@@ -326,9 +365,15 @@ async function changeActiveList(list, force = false) {
                 </div>
             `;
         }
-        res.tasks.forEach((task) => {
-            showTask(task);
-        });
+        if (JSON.stringify(tasks) !== JSON.stringify(res.tasks)) {
+            tasks = res.tasks;
+            _id('tasks').innerHTML = '';
+            res.tasks.forEach((task) => {
+                showTask(task);
+                if (task.id == activeTask.id)
+                    editTask(task, true);
+            });
+        }
         sortTasks();
         _id('tasks').classList.add('visible');
         _id('listScrollArea').dispatchEvent(new Event('scroll'));
@@ -421,7 +466,7 @@ async function editList(list) {
         label: 'Cancel',
         escape: true
     }, {
-        label: 'Done',
+        label: 'Save',
         primary: true,
         disabled: true,
         id: doneId,
@@ -433,7 +478,7 @@ async function editList(list) {
             if (res) {
                 await updateLists();
                 if (res.id == activeList.id)
-                    changeActiveList(listsById[list.id], true);
+                    changeActiveList(listsById(list.id), true);
             }
         }
     }]);
@@ -461,12 +506,26 @@ async function editList(list) {
     });
 }
 
-async function editTask(task) {
-    showPopup('Edit task', 'Coming soon™', [{
-        label: 'Done',
-        primary: true,
-        escape: true
-    }]);
+let activeTask = { id: 0 };
+let editTaskTransitionTimeout;
+async function editTask(task, stayOpen = false) {
+    if (task.id == activeTask.id && !stayOpen)
+        return hideEditTask();
+    activeTask = task;
+    _id('editTaskName').innerText = task.name;
+    clearTimeout(editTaskTransitionTimeout);
+    _id('editTaskCont').classList.add('visible');
+    editTaskTransitionTimeout = setTimeout(() => {
+        _id('editTaskCont').classList.add('ani');
+    }, 0);
+}
+function hideEditTask() {
+    clearTimeout(editTaskTransitionTimeout);
+    activeTask = { id: 0 };
+    _id('editTaskCont').classList.remove('ani');
+    editTaskTransitionTimeout = setTimeout(() => {
+        _id('editTaskCont').classList.remove('visible');
+    }, 200);
 }
 
 // Run once login is successful
@@ -589,26 +648,79 @@ async function init() {
         if (res.status == 'good') {
             showTask(res.task);
             sortTasks();
+            tasks.push(res.task);
         }
     });
     // Handle the edit list button
     _id('listEdit').addEventListener('click', () => {
         editList(activeList);
     });
+    // Handle task editing
+    _id('editTaskClose').addEventListener('click', hideEditTask);
+    _id('editTaskCont').addEventListener('click', () => {
+        if (_id('editTaskCont').getBoundingClientRect().x == 0)
+            _id('editTaskClose').click();
+    });
+    escapeQueue.push(() => {
+        _id('editTaskClose').click();
+    });
+    _id('editTaskCard').addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+    let taskNameEditTimeout;
+    _id('editTaskName').addEventListener('input', (e) => {
+        if (e.code == 'Enter') {
+            e.preventDefault();
+            return false;
+        }
+        clearTimeout(taskNameEditTimeout);
+        const task = JSON.parse(JSON.stringify(activeTask));
+        const value = _id('editTaskName').innerText.replace(/\n/g, '').replace(/\r/g, '');
+        if (value.length < 1 || value.length > 255) return;
+        taskNameEditTimeout = setTimeout(async() => {
+            const res = await call_api(`tasks/edit?id=${task.id}`, {
+                name: value
+            });
+            if (res.status == 'good') {
+                _qs(`.task[data-id="${task.id}"]`).remove();
+                showTask(res.task);
+                sortTasks();
+                activeTask = res.task;
+                for (let i = 0; i < tasks.length; i++) {
+                    if (tasks[i].id == activeTask.id)
+                        tasks[i] = activeTask;
+                }
+            }
+        }, 500);
+    });
     // Handle window resizing
     window.addEventListener('resize', () => {
         _id('listScrollArea').dispatchEvent(new Event('scroll'));
     });
-    // Handle window focus
-    window.addEventListener('focus', () => {
-        // Pull lists and current list tasks down from the server
-    });
+    // Handle refreshing
+    const lastRefresh = {
+        get: () => { return localStorageObjGet('lastRefresh').time },
+        update: () => { localStorageObjSet('lastRefresh', { time: Date.now() }) }
+    }
+    const refresh = async() => {
+        if (user.id) {
+            lastRefresh.update();
+            await updateLists();
+            changeActiveList(listsById(activeList.id), true);
+        }
+    }
+    lastRefresh.update();
+    setInterval(() => {
+        if ((Date.now()-lastRefresh.get()) > (1000*30) && document.visibilityState == 'visible') {
+            refresh();
+        }
+    }, 1000);
     // Fetch lists
     await updateLists();
     // Select the last active list or the top list
     const lastActiveList = localStorageObjGet('activeList');
     if (lists.length > 0)
-        changeActiveList(listsById[lastActiveList.id] || lists[0]);
+        changeActiveList(listsById(lastActiveList.id) || lists[0]);
     // Show the private beta notice
     if (!localStorageObjGet('seenBetaNotice')) {
         showPopup(`Hey`, `

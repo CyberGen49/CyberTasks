@@ -94,27 +94,6 @@ body {
     visibility: hidden;
     z-index: 4;
 }
-@media screen and (max-width: 750px) {
-    #sidebar {
-        position: fixed;
-        top: 0px;
-        left: -350px;
-        transition: 0.3s var(--bezier);
-    }
-    #sidebar.visible {
-        left: 0px;
-    }
-    #sidebar .top {
-        display: flex;
-    }
-    #sidebarDimming.visible {
-        opacity: 1;
-        visibility: visible;
-    }
-    #menuOpen {
-        display: flex;
-    }
-}
 #sidebar .profileCard {
     width: 100%;
     background: var(--b25);
@@ -217,7 +196,7 @@ body {
     flex-grow: 1;
     transition: 0.1s ease-in-out;
 }
-#listCont .topbar {
+#listCont > .topbar {
     height: 58px;
     padding: 0px 15px;
     background: var(--b15);
@@ -229,8 +208,9 @@ body {
     flex-wrap: nowrap;
     transition: 0.1s ease-in-out;
     z-index: 2;
+    user-select: none;
 }
-#listCont .topbar.scrolled {
+#listCont > .topbar.scrolled {
     box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.2);
 }
 #topbarTitle {
@@ -244,11 +224,11 @@ body {
     transition: 0.1s ease-in-out;
     visibility: hidden;
 }
-.topbar.scrolled #topbarTitle {
+#listCont > .topbar.scrolled #topbarTitle {
     opacity: 1;
     visibility: visible;
 }
-.topbar .btn {
+#listCont > .topbar .btn {
     --w: 44px;
 }
 #list {
@@ -339,7 +319,8 @@ body {
     background: var(--b30) !important;
 }
 #tasks .task .radio,
-#addTaskBox .radio {
+#addTaskBox .radio,
+#editTaskCard .taskNameCont .radio {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -353,7 +334,8 @@ body {
     height: 58px;
 }
 #tasks .task .radio:after,
-#addTaskBox .radio:after {
+#addTaskBox .radio:after,
+#editTaskCard .taskNameCont .radio::after {
     content: 'radio_button_unchecked';
     font-family: 'Material Symbols';
     font-size: 32px;
@@ -371,6 +353,8 @@ body {
     display: flex;
     flex-direction: column;
     line-height: 1.3;
+    overflow: hidden;
+    word-break: break-word;
 }
 #tasks .task .label .desc {
     font-size: 15px;
@@ -420,6 +404,95 @@ body {
     outline: none;
 }
 
+#editTaskCont {
+    width: 375px;
+    display: none;
+    opacity: 0;
+    transition: 0.1s ease-in-out;
+    transition-property: opacity;
+    overflow-y: auto;
+    overflow-x: hidden;
+}
+#editTaskCont.visible {
+    display: block;
+}
+#editTaskCont.ani {
+    opacity: 1;
+}
+#editTaskCont #editTaskCard {
+    margin: 15px 15px 15px 5px;
+    padding: 10px;
+    background: var(--b18);
+    border-radius: 20px;
+    transition: 0.2s var(--bezier);
+    box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.2);
+    scale: 1.15;
+}
+#editTaskCont.ani #editTaskCard {
+    scale: 1;
+}
+@media screen and (max-width: 800px) {
+    #editTaskCont {
+        position: fixed;
+        top: 0px;
+        left: 0px;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.5);
+        padding: 10px;
+        z-index: 8;
+    }
+    #editTaskCont.visible {
+        display: flex;
+    }
+    #editTaskCont #editTaskCard {
+        margin: auto;
+        width: 500px;
+        box-shadow: 0px 6px 15px 5px rgba(0, 0, 0, 0.2);
+    }
+}
+#editTaskCard .topbar {
+    font-family: 'Quicksand';
+    font-size: 24px;
+    font-weight: bold;
+    color: var(--f90);
+    user-select: none;
+}
+#editTaskCard .topbar .title {
+    overflow: hidden;
+    white-space: nowrap;
+    word-break: break-word;
+}
+#editTaskCard .section {
+    padding: 10px;
+    background: var(--b25);
+    border-radius: 12px;
+}
+#editTaskCard .taskNameCont {
+    display: flex;
+    align-items: center;
+    padding: 0px;
+}
+#editTaskCard .taskNameCont .radio {
+    font-size: 42px;
+    width: 58px;
+}
+#editTaskCard .taskNameCont .name {
+    padding: 10px 8px 10px 0px;
+    line-height: 1.2;
+    font-size: 20px;
+    max-width: 100%;
+    cursor: text;
+    display: flex;
+    align-items: center;
+    overflow-y: auto;
+    overflow-x: hidden;
+    word-break: break-word;
+}
+#editTaskCard .taskNameCont .name:focus-visible {
+    outline: none;
+}
+
 .hueCircle {
     all: unset;
     --w: 32px;
@@ -440,6 +513,28 @@ body {
 }
 .hueCircle:active:not(.selected) {
     transform: scale(0.9) !important;
+}
+
+@media screen and (max-width: 1100px) {
+    #sidebar {
+        position: fixed;
+        top: 0px;
+        left: -350px;
+        transition: 0.3s var(--bezier);
+    }
+    #sidebar.visible {
+        left: 0px;
+    }
+    #sidebar .top {
+        display: flex;
+    }
+    #sidebarDimming.visible {
+        opacity: 1;
+        visibility: visible;
+    }
+    #menuOpen {
+        display: flex;
+    }
 }
 
 ::-webkit-scrollbar {

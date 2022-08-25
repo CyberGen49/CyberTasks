@@ -77,28 +77,21 @@
                     <button id="menuOpen" class="btn alt2 iconOnly noShadow hidden" title="Open menu">
                         <div class="icon">menu</div>
                     </button>
+                    <button id="listEdit" class="btn alt2 iconOnly noShadow" title="Edit list details...">
+                        <div class="icon">edit</div>
+                    </button>
                     <div id="topbarTitle"></div>
                     <div class="row gap-10 no-wrap">
                         <button id="listSort" class="btn alt2 iconOnly noShadow" title="Sort tasks...">
                             <div class="icon">sort</div>
                         </button>
-                        <button id="listRefresh" class="btn alt2 iconOnly noShadow" onClick="changeActiveList(listsById[activeList.id], true)" title="Refresh list">
-                            <div class="icon">refresh</div>
-                        </button>
                     </div>
                 </div>
-                <div id="list" class="row">
+                <div id="list" class="row no-wrap" style="gap: 0px">
                     <div id="tasksCont" class="col flex-grow">
                         <div id="listScrollArea" class="col flex-grow">
                             <div class="header">
-                                <span>
-                                    <button id="listEdit" class="btn alt2 iconOnly noShadow" title="Edit list details..." style="display: inline;">
-                                        <div class="row align-center justify-center" style="width: 100%; height: 100%;">
-                                            <div class="icon">edit</div>
-                                        </div>
-                                    </button>
-                                    <span id="listHeaderTitle"></span>
-                                </span>
+                                <span id="listHeaderTitle"></span>
                             </div>
                             <div id="tasks"></div>
                         </div>
@@ -110,6 +103,20 @@
                             <button id="addTask" class="btn large iconOnly no-shrink" title="Add task" disabled>
                                 <div class="icon">add</div>
                             </button>
+                        </div>
+                    </div>
+                    <div id="editTaskCont" class="no-shrink">
+                        <div id="editTaskCard" class="col gap-10">
+                            <div class="topbar row align-center gap-10 no-wrap">
+                                <div id="editTaskClose" class="btn alt2 iconOnly noShadow" title="Close task editor">
+                                    <div class="icon">close</div>
+                                </div>
+                                <div class="title">Edit task</div>
+                            </div>
+                            <div class="section taskNameCont">
+                                <div class="radio"></div>
+                                <div id="editTaskName" class="name flex-grow" placeholder="Your task needs a name!" tabindex="0" contenteditable></div>
+                            </div>
                         </div>
                     </div>
                 </div>

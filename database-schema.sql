@@ -12,15 +12,6 @@ CREATE TABLE IF NOT EXISTS "api_keys" (
 	"scopes"	TEXT NOT NULL,
 	"key"	INTEGER NOT NULL UNIQUE
 );
-CREATE TABLE IF NOT EXISTS "lists" (
-	"id"	INTEGER NOT NULL UNIQUE,
-	"owner"	INTEGER NOT NULL,
-	"name"	TEXT NOT NULL,
-	"hue"	TEXT,
-	"sort_pos"	INTEGER NOT NULL DEFAULT 0,
-	"count_pending"	INTEGER NOT NULL DEFAULT 0,
-	"count_complete"	INTEGER NOT NULL DEFAULT 0
-);
 CREATE TABLE IF NOT EXISTS "tasks" (
 	"id"	INTEGER NOT NULL UNIQUE,
 	"list_id"	INTEGER NOT NULL,
@@ -41,4 +32,20 @@ CREATE TABLE IF NOT EXISTS "users" (
 	"discriminator"	INTEGER NOT NULL,
 	"picture"	TEXT,
 	"is_new"	INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS "lists" (
+	"id"	INTEGER NOT NULL UNIQUE,
+	"owner"	INTEGER NOT NULL,
+	"name"	TEXT NOT NULL,
+	"hue"	TEXT,
+	"sort_pos"	INTEGER NOT NULL DEFAULT 0,
+	"count_pending"	INTEGER NOT NULL DEFAULT 0,
+	"count_complete"	INTEGER NOT NULL DEFAULT 0,
+	"sort_order"	TEXT NOT NULL DEFAULT 'created',
+	"sort_reverse"	INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS "list_folders" (
+	"id"	INTEGER NOT NULL UNIQUE,
+	"owner"	INTEGER NOT NULL,
+	"name"	INTEGER NOT NULL
 );

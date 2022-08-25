@@ -176,7 +176,7 @@ const srv = http.createServer((req, res) => {
                 const hue = postBody.hue;
                 if (!is_param_valid(name, (name.length > 0 && name.length < 64)))
                     return;
-                if (!is_param_valid(hue, (hue >= 0 && hue <= 360))) return;
+                if (!is_param_valid((hue || hue === 0), (hue >= 0 && hue <= 360))) return;
                 id = Date.now();
                 db.prepare('INSERT INTO lists (id, owner, name, hue) VALUES (?, ?, ?, ?)').run(id, user.id, name, hue);
                 out.list = db.prepare('SELECT * FROM lists WHERE id = ?').get(id);
@@ -192,9 +192,23 @@ const srv = http.createServer((req, res) => {
                 if (!is_param_valid(id, db.prepare('SELECT id FROM lists WHERE owner = ? AND id = ?').get(user.id, id))) return;
                 if (!is_param_valid(name, (name.length > 0 && name.length < 64)))
                     return;
-                if (!is_param_valid(hue, (hue >= 0 && hue <= 360))) return;
+                if (!is_param_valid((hue || hue === 0), (hue >= 0 && hue <= 360))) return;
                 out.id = id;
                 db.prepare(`UPDATE lists SET name = ?, hue = ? WHERE id = ? AND owner = ?`).run(name, hue, id, user.id);
+                return end_api(out);
+            },
+            'lists/sort': () => {
+                if (!is_method_valid('POST')) return;
+                const user = get_active_user();
+                if (!user) return;
+                const id = params.get('id');
+                const order = params.get('order');
+                const reverse = (params.get('reverse') === 'true') ? 1 : 0;
+                if (!is_param_valid(id, db.prepare('SELECT id FROM lists WHERE owner = ? AND id = ?').get(user.id, id))) return;
+                const validOrders = ['created', 'az', 'due'];
+                if (!is_param_valid(order, validOrders.includes(order))) return;
+                out.id = id;
+                db.prepare(`UPDATE lists SET sort_order = ?, sort_reverse = ? WHERE id = ? AND owner = ?`).run(order, reverse, id, user.id);
                 return end_api(out);
             },
             'lists/delete': () => {
@@ -221,17 +235,35 @@ const srv = http.createServer((req, res) => {
                 out.task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
                 return end_api(out, 201);
             },
+            'tasks/edit': () => {
+                if (!is_method_valid('POST')) return;
+                const user = get_active_user();
+                if (!user) return;
+                const id = params.get('id');
+                const entry = db.prepare(`SELECT * FROM tasks WHERE owner = ? AND id = ?`).get(user.id, id)
+                if (!is_param_valid(id, entry)) return;
+                const name = postBody.name || entry.name;
+                if (!is_param_valid(name, (name.length > 0 && name.length < 256))) return;
+                const desc = postBody.desc || entry.desc || '';
+                if (!is_param_valid(true, (desc.length < 2048))) return;
+                if (entry.name !== name)
+                    db.prepare(`UPDATE tasks SET name = ? WHERE id = ?`).run(name, id);
+                if (entry.desc !== desc)
+                    db.prepare(`UPDATE tasks SET desc = ? WHERE id = ?`).run(desc, id);
+                out.task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+                return end_api(out);
+            },
             'tasks/toggleComplete': () => {
                 if (!is_method_valid('POST')) return;
                 const user = get_active_user();
                 if (!user) return;
-                const taskId = params.get('id');
-                const entry = db.prepare(`SELECT id, list_id, is_complete FROM tasks WHERE owner = ? AND id = ?`).get(user.id, taskId)
-                if (!is_param_valid(taskId, entry)) return;
+                const id = params.get('id');
+                const entry = db.prepare(`SELECT id, list_id, is_complete FROM tasks WHERE owner = ? AND id = ?`).get(user.id, id)
+                if (!is_param_valid(id, entry)) return;
                 const newCompletionStatus = (!entry.is_complete) ? 1 : 0;
-                out.id = taskId;
+                out.id = id;
                 out.is_complete = newCompletionStatus;
-                db.prepare('UPDATE tasks SET is_complete = ? WHERE id = ?').run(newCompletionStatus, taskId);
+                db.prepare('UPDATE tasks SET is_complete = ? WHERE id = ?').run(newCompletionStatus, id);
                 db.prepare('UPDATE lists SET count_pending = count_pending - 1 WHERE id = ?').run(entry.list_id);
                 db.prepare('UPDATE lists SET count_complete = count_complete + 1 WHERE id = ?').run(entry.list_id);
                 return end_api(out);
@@ -240,10 +272,10 @@ const srv = http.createServer((req, res) => {
                 if (!is_method_valid('POST')) return;
                 const user = get_active_user();
                 if (!user) return;
-                const taskId = params.get('id');
-                if (!is_param_valid(taskId, db.prepare(`SELECT id FROM tasks WHERE owner = ? AND id = ?`).get(user.id, taskId))) return;
-                db.prepare('DELETE FROM tasks WHERE owner = ? AND id = ?').run(user.id, taskId);
-                db.prepare('UPDATE lists SET count_pending = count_pending - 1 WHERE id = ?').run(taskId);
+                const id = params.get('id');
+                if (!is_param_valid(id, db.prepare(`SELECT id FROM tasks WHERE owner = ? AND id = ?`).get(user.id, id))) return;
+                db.prepare('DELETE FROM tasks WHERE owner = ? AND id = ?').run(user.id, id);
+                db.prepare('UPDATE lists SET count_pending = count_pending - 1 WHERE id = ?').run(id);
                 return end_api(out);
             },
             'tasks/pending': () => {
@@ -304,15 +336,15 @@ const srv = http.createServer((req, res) => {
         // Respond with an error if there's no user info
         if (!resUser.id) 
             return end_api({ error: 'getUserFailed' }, 500);
+        // Get the user entry from the database if it exists
+        const storedUser = db.prepare('SELECT * FROM users WHERE discord_id = ?').get(resUser.id);
         // Respond with an error if this Discord account isn't approved
-        let approvedIds = [];
-        if (!credentials.allow_new_users) {
-            approvedIds = JSON.parse(fs.readFileSync('./allowedUsers.json', 'utf-8'));
+        // and if it doesn't already exist in the database
+        if (!credentials.allow_new_users && !storedUser) {
+            const approvedIds = JSON.parse(fs.readFileSync('./allowedUsers.json', 'utf-8'));
             if (!approvedIds.includes(resUser.id.toString()))
                 return end_api({ error: 'notApproved' }, 403);
         }
-        // Get the user entry from the database if it exists
-        const storedUser = db.prepare('SELECT * FROM users WHERE discord_id = ?').get(resUser.id);
         // Save the current timestamp to use as a new user ID
         const newUserId = Date.now();
         // If the user doesn't exist
