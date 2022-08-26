@@ -13,12 +13,14 @@
     <meta name="twitter:image" content="/assets/promo.png"></meta>
     <link rel="icon" href="/assets/icon.png">
     <link rel="manifest" href="/assets/manifest.json">
+    <link rel="stylesheet" href="https://src.simplecyber.org/base.css?v=1">
     <link rel="stylesheet" href="/assets/app.css">
     <title>CyberTasks</title>
     <script async defer src="https://src.simplecyber.org/dayjs.min.js"></script>
     <script defer src="https://src.simplecyber.org/tabbable.js"></script>
     <script defer src="https://src.simplecyber.org/focus-trap.js"></script>
-    <script async defer src="https://src.simplecyber.org/base.js"></script>
+    <script async defer src="https://src.simplecyber.org/Sortable.js"></script>
+    <script async defer src="https://src.simplecyber.org/base.js?v=1"></script>
     <script async defer src="/assets/app.js"></script>
 </head>
 <body class="changeColours" style="--fgHue: 200;">
@@ -56,13 +58,16 @@
                 </div>
                 <div id="listsCont">
                     <button id="listSchedule" class="listEntry changeColours" style="--fgHue: 115" title="View your past due and upcoming scheduled tasks">Scheduled tasks</button>
-                    <div class="row align-center" style="padding: 15px 0px">
+                    <div class="row align-center gap-10" style="padding: 15px 0px">
                         <button id="createList" class="btn">
                             <div class="icon">add</div>
                             New list...
                         </button>
+                        <button id="createListFolder" class="btn alt iconOnly" title="Add category...">
+                            <div class="icon">create_new_folder</div>
+                        </button>
                         <div class="flex-grow"></div>
-                        <button id="sortLists" class="btn small alt iconOnly" title="Sort lists...">
+                        <button id="reoderLists" class="btn alt iconOnly small" title="Re-arrange lists">
                             <div class="icon">sort</div>
                         </button>
                     </div>
@@ -81,17 +86,18 @@
                         <div class="icon">edit</div>
                     </button>
                     <div id="topbarTitle"></div>
-                    <div class="row gap-10 no-wrap">
-                        <button id="listSort" class="btn alt2 iconOnly noShadow" title="Sort tasks...">
-                            <div class="icon">sort</div>
-                        </button>
-                    </div>
                 </div>
                 <div id="list" class="row no-wrap" style="gap: 0px">
                     <div id="tasksCont" class="col flex-grow">
-                        <div id="listScrollArea" class="col flex-grow">
-                            <div class="header">
-                                <span id="listHeaderTitle"></span>
+                        <div id="listScrollArea" class="col gap-10 flex-grow">
+                            <div class="header col gap-5">
+                                <div id="listHeaderTitle"></div>
+                                <div class="row gap-10 align-center">
+                                    <button id="sortTasks" class="btn alt2 iconOnly" title="Sort tasks...">
+                                        <div class="icon">sort</div>
+                                    </button>
+                                    <span id="taskSortText">Sorted manually</span>
+                                </div>
                             </div>
                             <div id="tasks"></div>
                         </div>

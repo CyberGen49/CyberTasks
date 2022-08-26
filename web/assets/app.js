@@ -97,15 +97,13 @@ async function call_api(endpoint, data = {}, method = 'POST') {
     if (!res.ok) {
         showPopup(`Request failed`, `The request to API endpoint <b>${endpoint}</b> failed! Make sure you're connected to the internet, then try again.`, [{
             label: 'Refresh app',
-            action: () => {
-                window.location.reload();
-            }
+            action: window.location.reload
         }, {
             label: 'Okay',
             escape: true,
             primary: true
         }]);
-        let json = {};
+        let json = null;
         try {
             json = await res.json();
         } catch(e) {}
@@ -124,7 +122,7 @@ let listsById = (id) => {
     }
     return false;
 }
-async function updateLists() {
+async function updateLists(force = false) {
     const res = await call_api('lists');
     if (!res) {
         _id('lists').innerHTML = `
@@ -138,8 +136,9 @@ async function updateLists() {
         `;
         return;
     }
-    if (JSON.stringify(lists) !== JSON.stringify(res.lists)) {
-        lists = res.lists;
+    const listsCombo = [...res.lists, ...res.folders];
+    if (JSON.stringify(lists) !== JSON.stringify(listsCombo) || force) {
+        lists = listsCombo;
         lists.sort((a, b) => {
             return b.id-a.id;
         });
@@ -149,56 +148,105 @@ async function updateLists() {
         _id('lists').innerHTML = '';
         lists.forEach((list) => {
             const elId = randomHex();
-            _id('lists').insertAdjacentHTML('beforeend', `
-                <button id="${elId}" class="listEntry ${(list.hue) ? `changeColours`:''}" style="${(list.hue) ? `--fgHue: ${list.hue}`:''}" data-id="${list.id}" title="${list.name}<br><small><em>Right click for actions...</em></small>">
-                    <span class="label"></span>
-                </button>
-            `);
-            _class('label', _id(elId))[0].innerText = list.name;
-            _id(elId).addEventListener('click', () => {
-                changeActiveList(list);
-                _id('sidebarDimming').click();
-            });
-            _id(elId).addEventListener('contextmenu', (e) => {
-                e.preventDefault();
-                showContext([{
-                    type: 'item',
-                    name: 'Edit list...',
-                    icon: 'edit',
-                    action: () => {
-                        editList(list);
-                    }
-                }, {
-                    type: 'item',
-                    name: 'Delete list...',
-                    icon: 'delete',
-                    action: () => {
-                        showPopup(`Delete list`, `
-                            <p>Are you sure you want to delete <b>${list.name}</b> and <b>all</b> of its associated tasks?</p>
-                            <p style="color: var(--danger)">This action can't be undone!</p>
-                        `, [{
-                            label: 'No',
-                            escape: true
-                        }, {
-                            label: 'Yes',
-                            primary: true,
-                            action: async() => {
-                                const res = await call_api(`lists/delete?id=${list.id}`);
-                                if (res.status == 'good') {
-                                    updateLists();
+            if (list.sort_order) {
+                _id('lists').insertAdjacentHTML('beforeend', `
+                    <button id="${elId}" class="listEntry ${(list.hue) ? `changeColours`:''}" style="${(list.hue) ? `--fgHue: ${list.hue}`:''}" data-id="${list.id}" title="${list.name}<br><small><em>Right click for actions...</em></small>">
+                        <span class="label">${escapeHTML(list.name)}</span>
+                        <div class="handle"></div>
+                    </button>
+                `);
+                _id(elId).addEventListener('click', () => {
+                    changeActiveList(list);
+                    _id('sidebarDimming').click();
+                });
+                _id(elId).addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    showContext([{
+                        type: 'item',
+                        name: 'Edit list...',
+                        icon: 'edit',
+                        action: () => {
+                            editList(list);
+                        }
+                    }, {
+                        type: 'item',
+                        name: 'Delete list...',
+                        icon: 'delete',
+                        action: () => {
+                            showPopup(`Delete list`, `
+                                <p>Are you sure you want to delete <b>${list.name}</b> and <b>all</b> of its associated tasks?</p>
+                                <p style="color: var(--danger)">This action can't be undone!</p>
+                            `, [{
+                                label: 'No',
+                                escape: true
+                            }, {
+                                label: 'Yes',
+                                primary: true,
+                                action: async() => {
+                                    const res = await call_api(`lists/delete?id=${list.id}`);
+                                    if (res.status == 'good') {
+                                        updateLists();
+                                    }
                                 }
-                            }
-                        }]);
-                    }
-                }, { type: 'sep' }, {
-                    type: 'item',
-                    name: 'Copy list ID',
-                    icon: 'code',
-                    action: () => {
-                        copyText(list.id);
-                    }
-                }]);
-            });
+                            }]);
+                        }
+                    }, { type: 'sep' }, {
+                        type: 'item',
+                        name: 'Copy list ID',
+                        icon: 'code',
+                        action: () => {
+                            copyText(list.id);
+                        }
+                    }]);
+                });
+            } else {
+                _id('lists').insertAdjacentHTML('beforeend', `
+                    <div id="${elId}" class="listFolder row align-center no-wrap" data-id="${list.id}" title="${escapeHTML(list.name)} (Category)<br><small><em>Right click for actions...</em></small>">
+                        <span class="label">${escapeHTML(list.name)}</span>
+                        <div class="handle"></div>
+                    </div>
+                `);
+                _id(elId).addEventListener('contextmenu', (e) => {
+                    e.preventDefault();
+                    showContext([{
+                        type: 'item',
+                        name: 'Edit category...',
+                        icon: 'edit',
+                        action: () => {
+                            editListFolder(list);
+                        }
+                    }, {
+                        type: 'item',
+                        name: 'Delete category...',
+                        icon: 'delete',
+                        action: () => {
+                            showPopup(`Delete category`, `
+                                <p>Are you sure you want to delete this category?</p>
+                                <p>Your lists won't be effected.</p>
+                            `, [{
+                                label: 'No',
+                                escape: true
+                            }, {
+                                label: 'Yes',
+                                primary: true,
+                                action: async() => {
+                                    const res = await call_api(`lists/deleteFolder?id=${list.id}`);
+                                    if (res.status == 'good') {
+                                        updateLists();
+                                    }
+                                }
+                            }]);
+                        }
+                    }, { type: 'sep' }, {
+                        type: 'item',
+                        name: 'Copy category ID',
+                        icon: 'code',
+                        action: () => {
+                            copyText(list.id);
+                        }
+                    }]);
+                });
+            }
         });
     }
     return;
@@ -323,16 +371,22 @@ function sortTasks() {
 let changeListTimeout;
 let activeList = { id: 0 };
 let tasks = [];
+const sortOrderNames = {
+    'created-0': 'Created - Oldest to newest',
+    'created-1': 'Created - Newest to oldest',
+    'due-0': 'Due date - Closest to farthest',
+    'due-1': 'Due date - Farthest to closest',
+    'az-0': 'Alphabetically - A-Z',
+    'az-1': 'Alphabetically - Z-A'
+}
 async function changeActiveList(list, force = false) {
     const isSameList = (activeList.id == list.id);
-    if (isSameList && !force) return;
     clearTimeout(changeListTimeout);
     if (!isSameList) {
         _id('list').classList.remove('visible');
         _id('listScrollArea').scrollTop = 0;
         _id('tasks').classList.remove('visible');
         hideEditTask();
-        activeTask = { id: 0 };
     }
     document.title = list.name;
     changeListTimeout = setTimeout(async() => {
@@ -340,7 +394,9 @@ async function changeActiveList(list, force = false) {
         _id('listCont').style.setProperty('--fgHue', list.hue);
         _id('topbarTitle').innerText = list.name;
         _id('listHeaderTitle').innerText = list.name;
+        _id('taskSortText').innerText = sortOrderNames[`${list.sort_order}-${list.sort_reverse}`];
         _id('list').classList.add('visible');
+        if (isSameList && !force) return;
         const res = await call_api(`tasks/pending?list=${list.id}`);
         if (!res) {
             _id('tasks').innerHTML = `
@@ -355,7 +411,7 @@ async function changeActiveList(list, force = false) {
             return;
         }
         activeList = list;
-        localStorageObjSet('activeList', { id: list.id });
+        localStorageObjSet('activeList', activeList);
         if (res.tasks.length == 0) {
             _id('tasks').innerHTML = `
                 <div class="empty col gap-8 align-center">
@@ -364,9 +420,7 @@ async function changeActiveList(list, force = false) {
                     <div class="desc">Sit back and relax or add a new task below.</div>
                 </div>
             `;
-        }
-        if (JSON.stringify(tasks) !== JSON.stringify(res.tasks)) {
-            tasks = res.tasks;
+        } else if (JSON.stringify(tasks) !== JSON.stringify(res.tasks)) {
             _id('tasks').innerHTML = '';
             res.tasks.forEach((task) => {
                 showTask(task);
@@ -374,10 +428,11 @@ async function changeActiveList(list, force = false) {
                     editTask(task, true);
             });
         }
+        tasks = res.tasks;
         sortTasks();
         _id('tasks').classList.add('visible');
         _id('listScrollArea').dispatchEvent(new Event('scroll'));
-    }, 200);
+    }, ((isSameList) ? 0 : 200));
 }
 
 function addHueCircles(el, parent) {
@@ -407,7 +462,7 @@ function addHueCircles(el, parent) {
         });
     });
 }
-async function createList() {
+function createList() {
     const createId = randomHex();
     const hueCircleContId = randomHex();
     const id = showPopup('New list', `
@@ -449,7 +504,41 @@ async function createList() {
         if (e.code == 'Enter') _id(createId).click();
     });
 }
-async function editList(list) {
+function createListFolder() {
+    const createId = randomHex();
+    const id = showPopup('Add category', `
+        <div class="input labeled" style="width: 300px">
+            <label>Category name</label>
+            <input id="newFolderName" class="textbox" type="text" autocomplete="off">
+        </div>
+    `, [{
+        label: 'Cancel',
+        escape: true
+    }, {
+        label: 'Create',
+        primary: true,
+        disabled: true,
+        id: createId,
+        action: async() => {
+            const res = await call_api('lists/createFolder', {
+                name: _id('newFolderName').value
+            });
+            if (res.status == 'good')
+                updateLists();
+        }
+    }]);
+    _id('newFolderName').addEventListener('input', () => {
+        const value = _id('newFolderName').value;
+        _id(createId).disabled = true;
+        if (value.length > 0 && value.length < 64)
+            _id(createId).disabled = false;
+    });
+    _id('newFolderName').focus();
+    _id(id).addEventListener('keypress', (e) => {
+        if (e.code == 'Enter') _id(createId).click();
+    });
+}
+function editList(list) {
     const doneId = randomHex();
     const hueCircleContId = randomHex();
     const id = showPopup(`Edit <span style="color: var(--f85)">${list.name}</span>`, `
@@ -477,8 +566,9 @@ async function editList(list) {
             });
             if (res) {
                 await updateLists();
-                if (res.id == activeList.id)
-                    changeActiveList(listsById(list.id), true);
+                if (res.list.id == activeList.id) {
+                    changeActiveList(res.list);
+                }
             }
         }
     }]);
@@ -503,6 +593,42 @@ async function editList(list) {
     }, 50);
     _id(id).addEventListener('keypress', (e) => {
         if (e.code == 'Enter') _id(doneId).click();
+    });
+}
+function editListFolder(folder) {
+    const createId = randomHex();
+    const id = showPopup('Edit category', `
+        <div class="input labeled" style="width: 300px">
+            <label>Category name</label>
+            <input id="newFolderName" class="textbox" type="text" autocomplete="off">
+        </div>
+    `, [{
+        label: 'Cancel',
+        escape: true
+    }, {
+        label: 'Save',
+        primary: true,
+        disabled: true,
+        id: createId,
+        action: async() => {
+            const res = await call_api(`lists/editFolder?id=${folder.id}`, {
+                name: _id('newFolderName').value
+            });
+            if (res.status == 'good')
+                updateLists();
+        }
+    }]);
+    _id('newFolderName').addEventListener('input', () => {
+        const value = _id('newFolderName').value;
+        _id(createId).disabled = true;
+        if (value.length > 0 && value.length < 64)
+            _id(createId).disabled = false;
+    });
+    _id('newFolderName').value = folder.name;
+    _id('newFolderName').dispatchEvent(new Event('input'));
+    _id('newFolderName').focus();
+    _id(id).addEventListener('keypress', (e) => {
+        if (e.code == 'Enter') _id(createId).click();
     });
 }
 
@@ -581,20 +707,20 @@ async function init() {
             }
         }]);
     });
-    // Handle create list button
+    // Handle creating lists
     _id('createList').addEventListener('click', createList);
-    // Handle list sort button
-    _id('sortLists').addEventListener('click', () => {
-        showPopup('Sort lists', `
-            Coming soon!
-        `, [{
-            label: 'Done',
-            primary: true,
-            escape: true,
-            action: () => {
-                // ...
-            }
-        }]);
+    _id('createListFolder').addEventListener('click', createListFolder);
+    // Handle rearranging lists
+    let is_reordering = false;
+    _id('reoderLists').addEventListener('click', () => {
+        if (!is_reordering) {
+            _id('reoderLists').classList.remove('alt');
+            _id('lists').classList.add('sortable');
+        } else {
+            _id('reoderLists').classList.add('alt');
+            _id('lists').classList.remove('sortable');
+        }
+        is_reordering = !is_reordering;
     });
     // Handle titlebar on scroll
     _id('listScrollArea').addEventListener('scroll', () => {
@@ -623,6 +749,29 @@ async function init() {
     });
     _id('menuClose').addEventListener('click', () => {
         _id('sidebarDimming').click();
+    });
+    // Handle sorting tasks
+    _id('sortTasks').addEventListener('click', () => {
+        let data = [];
+        Object.keys(sortOrderNames).forEach((key) => {
+            const name = sortOrderNames[key];
+            const keySplit = key.split('-');
+            data.push({
+                type: 'item',
+                name: name,
+                action: async() => {
+                    const res = await call_api(`lists/sort?id=${activeList.id}&order=${keySplit[0]}&reverse=${(parseInt(keySplit[1])) ? 'true':'false'}`);
+                    if (res.status === 'good') {
+                        updateLists();
+                        activeList.sort_order = keySplit[0];
+                        activeList.sort_reverse = parseInt(keySplit[1]);
+                        changeActiveList(activeList);
+                        sortTasks();
+                    }
+                }
+            });
+        });
+        showContext(data);
     });
     // Handle adding tasks
     _id('inputNewTaskName').addEventListener('keydown', (e) => {
@@ -717,6 +866,28 @@ async function init() {
     }, 1000);
     // Fetch lists
     await updateLists();
+    const sortable = Sortable.create(_id('lists'), {
+        handle: '.handle',
+        animation: 200,
+        easing: 'cubic-bezier(0.1, 0.3, 0.3, 1',
+        onStart: () => {
+            _id('lists').classList.add('dragging');
+        },
+        onChange: () => {
+            navigator.vibrate(2);
+        },
+        onEnd: async() => {
+            _id('lists').classList.remove('dragging');
+            let ids = [];
+            [..._id('lists').children].forEach((el) => {
+                if (!ids.includes(el.dataset.id))
+                    ids.push(el.dataset.id);
+            });
+            const res = await call_api('lists/sort', {
+                order: ids
+            });
+        }
+    });
     // Select the last active list or the top list
     const lastActiveList = localStorageObjGet('activeList');
     if (lists.length > 0)

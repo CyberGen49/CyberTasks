@@ -166,6 +166,41 @@ const srv = http.createServer((req, res) => {
                 const user = get_active_user();
                 if (!user) return;
                 out.lists = db.prepare('SELECT * FROM lists WHERE owner = ?').all(user.id) || {};
+                out.folders = db.prepare('SELECT * FROM list_folders WHERE owner = ?').all(user.id) || {};
+                return end_api(out);
+            },
+            'lists/createFolder': () => {
+                if (!is_method_valid('POST')) return;
+                const user = get_active_user();
+                if (!user) return;
+                const name = postBody.name;
+                if (!is_param_valid(name, (name.length > 0 && name.length < 64)))
+                    return;
+                id = Date.now();
+                db.prepare('INSERT INTO list_folders (id, owner, name) VALUES (?, ?, ?)').run(id, user.id, name);
+                out.folder = db.prepare('SELECT * FROM list_folders WHERE id = ?').get(id);
+                return end_api(out, 201);
+            },
+            'lists/editFolder': () => {
+                if (!is_method_valid('POST')) return;
+                const user = get_active_user();
+                if (!user) return;
+                const id = params.get('id');
+                const name = postBody.name;
+                if (!is_param_valid(id, db.prepare('SELECT id FROM list_folders WHERE owner = ? AND id = ?').get(user.id, id))) return;
+                if (!is_param_valid(name, (name.length > 0 && name.length < 64)))
+                    return;
+                db.prepare(`UPDATE list_folders SET name = ? WHERE id = ? AND owner = ?`).run(name, id, user.id);
+                out.folder = db.prepare('SELECT * FROM list_folders WHERE id = ?').get(id);
+                return end_api(out);
+            },
+            'lists/deleteFolder': () => {
+                if (!is_method_valid('POST')) return;
+                const user = get_active_user();
+                if (!user) return;
+                const id = params.get('id');
+                if (!is_param_valid(id, db.prepare('SELECT id FROM list_folders WHERE owner = ? AND id = ?').get(user.id, id))) return;
+                db.prepare('DELETE FROM list_folders WHERE id = ? AND owner = ?').run(id, user.id);
                 return end_api(out);
             },
             'lists/create': () => {
@@ -193,11 +228,37 @@ const srv = http.createServer((req, res) => {
                 if (!is_param_valid(name, (name.length > 0 && name.length < 64)))
                     return;
                 if (!is_param_valid((hue || hue === 0), (hue >= 0 && hue <= 360))) return;
-                out.id = id;
                 db.prepare(`UPDATE lists SET name = ?, hue = ? WHERE id = ? AND owner = ?`).run(name, hue, id, user.id);
+                out.list = db.prepare('SELECT * FROM lists WHERE id = ?').get(id);
                 return end_api(out);
             },
             'lists/sort': () => {
+                if (!is_method_valid('POST')) return;
+                const user = get_active_user();
+                if (!user) return;
+                const order = postBody.order;
+                if (!is_param_valid(order, true)) return;
+                let i = 1;
+                let isError = false;
+                order.forEach((id) => {
+                    if (isError) return;
+                    let isFolder = false;
+                    let entry = db.prepare(`SELECT id FROM lists WHERE id = ? AND owner = ?`).get(id, user.id);
+                    if (!entry) {
+                        isFolder = true;
+                        entry = db.prepare(`SELECT id FROM list_folders WHERE id = ? AND owner = ?`).get(id, user.id);
+                        if (!entry) {
+                            isError = true;
+                            return is_param_valid(false, false);
+                        }
+                    }
+                    db.prepare(`UPDATE ${(isFolder) ? 'list_folders':'lists'} SET sort_pos = ? WHERE id = ? AND owner = ?`).run(i, id, user.id);
+                    i++;
+                });
+                if (isError) return;
+                return end_api(out);
+            },
+            'lists/sortTasks': () => {
                 if (!is_method_valid('POST')) return;
                 const user = get_active_user();
                 if (!user) return;
