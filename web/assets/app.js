@@ -7,9 +7,9 @@ const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
 window.addEventListener('load', async() => {
     // If a Discord access code is present
     let loginError;
-    if (params['discord_code']) {
+    if (params.get('discord_code')) {
         // Send the code and get a user account token in return
-        const res = await (await fetch(`/discord-login?code=${params['discord_code']}`)).json();
+        const res = await (await fetch(`/discord-login?code=${params.get('discord_code')}`)).json();
         if (res.error) loginError = res.error;
         if (res.token) localStorageObjSet('auth', { token: res.token });
     }

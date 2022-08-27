@@ -195,7 +195,7 @@ body {
     font-family: 'Material Symbols';
     font-size: 28px;
     color: var(--b60);
-    content: 'drag_handle';
+    content: 'drag_indicator';
 }
 .canHover #sidebar .listEntry:hover,
 #sidebar .listEntry:focus-visible {
