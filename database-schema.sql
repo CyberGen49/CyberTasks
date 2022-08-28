@@ -12,19 +12,6 @@ CREATE TABLE IF NOT EXISTS "api_keys" (
 	"scopes"	TEXT NOT NULL,
 	"key"	INTEGER NOT NULL UNIQUE
 );
-CREATE TABLE IF NOT EXISTS "tasks" (
-	"id"	INTEGER NOT NULL UNIQUE,
-	"list_id"	INTEGER NOT NULL,
-	"owner"	INTEGER NOT NULL,
-	"name"	TEXT NOT NULL,
-	"due_date"	INTEGER,
-	"steps"	TEXT DEFAULT '[]',
-	"desc"	TEXT,
-	"is_complete"	INTEGER NOT NULL DEFAULT 0,
-	"is_repeat"	INTEGER NOT NULL DEFAULT 0,
-	"repeat_unit"	TEXT,
-	"repeat_count"	INTEGER
-);
 CREATE TABLE IF NOT EXISTS "users" (
 	"id"	INTEGER NOT NULL UNIQUE,
 	"discord_id"	TEXT NOT NULL UNIQUE,
@@ -49,3 +36,20 @@ CREATE TABLE IF NOT EXISTS "list_folders" (
 	"owner"	INTEGER NOT NULL,
 	"name"	INTEGER NOT NULL
 , "sort_pos"	INTEGER NOT NULL DEFAULT 0);
+CREATE TABLE IF NOT EXISTS "list_shares" (
+	"user_id"	INTEGER NOT NULL,
+	"list_id"	INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS "tasks" (
+	"id"	INTEGER NOT NULL UNIQUE,
+	"list_id"	INTEGER NOT NULL,
+	"owner"	INTEGER NOT NULL,
+	"name"	TEXT NOT NULL,
+	"due_date"	TEXT,
+	"steps"	TEXT DEFAULT '[]',
+	"desc"	TEXT,
+	"is_complete"	INTEGER NOT NULL DEFAULT 0,
+	"is_repeat"	INTEGER NOT NULL DEFAULT 0,
+	"repeat_unit"	TEXT,
+	"repeat_count"	INTEGER
+);

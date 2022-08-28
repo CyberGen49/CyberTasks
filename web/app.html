@@ -7,8 +7,8 @@
     <meta property="og:type" content="website">
     <meta property="og:site_name" content="CyberTasks">
     <meta property="og:title" content="CyberTasks (Private Beta)">
-    <meta property="og:description" content="An easy to use to-do list and task scheduler webapp.">
-    <meta name="description" content="An easy to use to-do list and task scheduler webapp.">
+    <meta property="og:description" content="An easy to use to-do list and task scheduler webapp inspired by Google Tasks and Microsoft To-Do.">
+    <meta name="description" content="An easy to use to-do list and task scheduler webapp inspired by Google Tasks and Microsoft To-Do.">
     <meta name="twitter:card" content="summary_large_image"></meta>
     <meta name="twitter:image" content="/assets/promo.png"></meta>
     <link rel="icon" href="/assets/icon.png">
@@ -17,6 +17,7 @@
     <link rel="stylesheet" href="/assets/app.css">
     <title>CyberTasks</title>
     <script async defer src="https://src.simplecyber.org/dayjs.min.js"></script>
+    <script defer src="https://src.simplecyber.org/dayjs.advancedFormat.js"></script>
     <script defer src="https://src.simplecyber.org/tabbable.js"></script>
     <script defer src="https://src.simplecyber.org/focus-trap.js"></script>
     <script async defer src="https://src.simplecyber.org/Sortable.js"></script>
@@ -89,7 +90,7 @@
                 </div>
                 <div id="list" class="row no-wrap" style="gap: 0px">
                     <div id="tasksCont" class="col flex-grow">
-                        <div id="listScrollArea" class="col gap-10 flex-grow">
+                        <div id="listScrollArea" class="col gap-10">
                             <div class="header col gap-5">
                                 <div id="listHeaderTitle"></div>
                                 <div class="row gap-10 align-center">
@@ -99,9 +100,22 @@
                                     <span id="taskSortText">Sorted manually</span>
                                 </div>
                             </div>
-                            <div id="tasks"></div>
+                            <div id="tasksEmpty" class="empty col gap-8 align-center">
+                                <div class="icon">check_circle</div>
+                                <div class="title">You're all caught up!</div>
+                                <div class="desc">Sit back and relax or add a new task below.</div>
+                            </div>
+                            <div id="tasks" class="tasks"></div>
+                            <div class="row">
+                                <button id="showCompleted" class="btn alt2">
+                                    <span id="showCompletedText"></span>
+                                    <div id="showCompletedArrow" class="icon"></div>
+                                </button>
+                            </div>
+                            <div id="tasksComplete" class="tasks"></div>
+                            <div class="flex-grow"></div>
                         </div>
-                        <div id="addTaskCont" class="row align-center gap-10 no-wrap">
+                        <div id="addTaskCont" class="row align-center gap-10 no-wrap flex-grow" style="align-items: flex-end;">
                             <div id="addTaskBox" class="flex-grow">
                                 <div class="radio"></div>
                                 <div id="inputNewTaskName" class="input flex-grow" contenteditable="true" tabindex="0" placeholder="Add a new task..."></div>
@@ -112,16 +126,37 @@
                         </div>
                     </div>
                     <div id="editTaskCont" class="no-shrink">
-                        <div id="editTaskCard" class="col gap-10">
+                        <div id="editTaskCard" class="col gap-3">
                             <div class="topbar row align-center gap-10 no-wrap">
                                 <div id="editTaskClose" class="btn alt2 iconOnly noShadow" title="Close task editor">
                                     <div class="icon">close</div>
                                 </div>
                                 <div class="title">Edit task</div>
                             </div>
-                            <div class="section taskNameCont">
-                                <div class="radio"></div>
-                                <div id="editTaskName" class="name flex-grow" placeholder="Your task needs a name!" tabindex="0" contenteditable></div>
+                            <div class="section" style="padding: 0px;">
+                                <div class="taskNameCont">
+                                    <div id="editTaskRadio" class="radio"></div>
+                                    <div id="editTaskName" class="name flex-grow" placeholder="Your task needs a name!" tabindex="0" contenteditable></div>
+                                </div>
+                                <div style="padding: 0px 10px 10px 10px">
+                                    <div id="steps" class="col"></div>
+                                    <button class="btn small noShadow">
+                                        <div class="icon">add</div>
+                                        Add step
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="section row no-wrap align-center">
+                                <button id="setDueDate" class="btn iconOnly noShadow">
+                                    <div class="icon">edit_calendar</div>
+                                </button>
+                                <div class="col gap-3 flex-grow">
+                                    <span>Set due date</span>
+                                    <div id="dueDateText"></div>
+                                </div>
+                                <button id="removeDueDate" class="btn alt2 iconOnly noShadow">
+                                    <div class="icon">close</div>
+                                </button>
                             </div>
                         </div>
                     </div>

@@ -307,10 +307,15 @@ const srv = http.createServer((req, res) => {
                 if (!is_param_valid(name, (name.length > 0 && name.length < 256))) return;
                 const desc = postBody.desc || entry.desc || '';
                 if (!is_param_valid(true, (desc.length < 2048))) return;
+                let due = postBody.due_date || entry.due_date || null;
+                if (due === 'null') due = null;
+                if (!is_param_valid(true, (due === null || new Date(due).getTime()))) return;
                 if (entry.name !== name)
                     db.prepare(`UPDATE tasks SET name = ? WHERE id = ?`).run(name, id);
                 if (entry.desc !== desc)
                     db.prepare(`UPDATE tasks SET desc = ? WHERE id = ?`).run(desc, id);
+                if (entry.due_date !== due)
+                    db.prepare(`UPDATE tasks SET due_date = ? WHERE id = ?`).run(due, id);
                 out.task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
                 return end_api(out);
             },
@@ -322,11 +327,16 @@ const srv = http.createServer((req, res) => {
                 const entry = db.prepare(`SELECT id, list_id, is_complete FROM tasks WHERE owner = ? AND id = ?`).get(user.id, id)
                 if (!is_param_valid(id, entry)) return;
                 const newCompletionStatus = (!entry.is_complete) ? 1 : 0;
-                out.id = id;
-                out.is_complete = newCompletionStatus;
                 db.prepare('UPDATE tasks SET is_complete = ? WHERE id = ?').run(newCompletionStatus, id);
-                db.prepare('UPDATE lists SET count_pending = count_pending - 1 WHERE id = ?').run(entry.list_id);
-                db.prepare('UPDATE lists SET count_complete = count_complete + 1 WHERE id = ?').run(entry.list_id);
+                if (newCompletionStatus) {
+                    db.prepare('UPDATE lists SET count_pending = count_pending - 1 WHERE id = ?').run(entry.list_id);
+                    db.prepare('UPDATE lists SET count_complete = count_complete + 1 WHERE id = ?').run(entry.list_id);
+                } else {
+                    db.prepare('UPDATE lists SET count_pending = count_pending + 1 WHERE id = ?').run(entry.list_id);
+                    db.prepare('UPDATE lists SET count_complete = count_complete - 1 WHERE id = ?').run(entry.list_id);
+                }
+                out.task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+                out.list = db.prepare('SELECT * FROM lists WHERE id = ?').get(entry.list_id);
                 return end_api(out);
             },
             'tasks/delete': () => {

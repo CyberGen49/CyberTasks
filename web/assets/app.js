@@ -155,11 +155,11 @@ async function updateLists(force = false) {
                         <div class="handle"></div>
                     </button>
                 `);
-                _id(elId).addEventListener('click', () => {
+                on(_id(elId), 'click', () => {
                     changeActiveList(list);
                     _id('sidebarDimming').click();
                 });
-                _id(elId).addEventListener('contextmenu', (e) => {
+                on(_id(elId), 'contextmenu', (e) => {
                     e.preventDefault();
                     showContext([{
                         type: 'item',
@@ -206,7 +206,7 @@ async function updateLists(force = false) {
                         <div class="handle"></div>
                     </div>
                 `);
-                _id(elId).addEventListener('contextmenu', (e) => {
+                on(_id(elId), 'contextmenu', (e) => {
                     e.preventDefault();
                     showContext([{
                         type: 'item',
@@ -254,11 +254,16 @@ async function updateLists(force = false) {
 
 function showTask(task) {
     const id = randomHex();
-    _id('tasks').insertAdjacentHTML('beforeend', `
-        <button id="${id}" class="task" data-id="${task.id}" data-due="${task.due_date}">
-            <div id="${id}-radio" class="radio" tabindex="0" title="Mark task as complete"></div>
+    const existingEl = _qs(`.task[data-id="${task.id}"]`);
+    if (existingEl) existingEl.remove();
+    _id((task.is_complete) ? 'tasksComplete':'tasks').insertAdjacentHTML('beforeend', `
+        <button id="${id}" class="task ${(task.is_complete) ? 'complete':''}" data-id="${task.id}" data-due="${task.due_date}">
+            <div id="${id}-radio" class="radio" tabindex="0" title="${(task.is_complete) ? 'Mark task as incomplete':'Mark task as complete'}"></div>
             <div class="label">
                 <div id="${id}-name" class="name"></div>
+                ${(task.due_date) ? `<div class="desc dueDate">
+                    Due ${dayjs(new Date(task.due_date)).format(`MMMM Do, YYYY`)}
+                </div>`:''}
                 ${(task.desc) ? `<div id="${id}-desc" class="desc"></div>`:''}
             </div>
         </button>
@@ -266,10 +271,10 @@ function showTask(task) {
     _id(`${id}-name`).innerText = task.name;
     if (task.desc)
         _id(`${id}-desc`).innerText = task.desc;
-    _id(id).addEventListener('click', () => {
+    on(_id(id), 'click', () => {
         editTask(task);
     });
-    _id(id).addEventListener('contextmenu', (e) => {
+    on(_id(id), 'contextmenu', (e) => {
         e.preventDefault();
         showContext([{
             type: 'item',
@@ -321,16 +326,18 @@ function showTask(task) {
     const onComplete = async() => {
         _id(id).style.display = 'none';
         const res = await call_api(`tasks/toggleComplete?id=${task.id}`);
-        if (res.status == 'good')
+        if (res.status == 'good') {
             _id(id).remove();
-        else
-            _id(id).style.display = '';
+            activeList = res.list;
+            showTask(res.task);
+            changeActiveList(activeList);
+        } else _id(id).style.display = '';
     };
-    _id(`${id}-radio`).addEventListener('click', (e) => {
+    on(_id(`${id}-radio`), 'click', (e) => {
         e.stopPropagation();
         onComplete();
     });
-    _id(`${id}-radio`).addEventListener('keyup', (e) => {
+    on(_id(`${id}-radio`), 'keyup', (e) => {
         if (e.code == 'Space') {
             e.stopPropagation();
             onComplete();
@@ -339,12 +346,16 @@ function showTask(task) {
 }
 function sortTasks() {
     // https://stackoverflow.com/questions/34685316/reorder-html-elements-in-dom
-    const wrapper = _id('tasks');
-    const tasks = [...wrapper.children];
+    const tasksCont = _id('tasks');
+    const tasksCompleteCont = _id('tasksComplete');
+    const tasks = [...tasksCont.children];
+    const tasksComplete = [...tasksCompleteCont.children];
     const sort_func = {
+        // Sort by creation date
         'created': (a, b) => {
             return parseInt(a.dataset.id)-parseInt(b.dataset.id);
         },
+        // Sort alphabetically
         'az': (a, b) => {
             const name = {
                 a: _qs('.name', a).innerText,
@@ -355,22 +366,37 @@ function sortTasks() {
                 sensitivity: 'base'
             });
         },
+        // Sort by due date
         'due': (a, b) => {
             a = parseInt(a.dataset.due) || 0;
             b = parseInt(b.dataset.due) || 0;
             return a-b;
         }
     }
+    // Sort pending tasks
     tasks.sort(sort_func[activeList.sort_order]);
     if (activeList.sort_reverse) tasks.reverse();
     tasks.forEach(task => {
-        wrapper.appendChild(task);
+        tasksCont.appendChild(task);
     });
+    // Sort completed tasks
+    tasksComplete.sort(sort_func[activeList.sort_order]);
+    if (activeList.sort_reverse) tasksComplete.reverse();
+    tasksComplete.forEach(task => {
+        tasksCompleteCont.appendChild(task);
+    });
+}
+function checkListEmpty() {
+    if (_class('task', _id('tasks')).length == 0)
+        _id('tasksEmpty').style.display = '';
+    else
+        _id('tasksEmpty').style.display = 'none';
 }
 
 let changeListTimeout;
 let activeList = { id: 0 };
 let tasks = [];
+let showCompleted = false;
 const sortOrderNames = {
     'created-0': 'Created - Oldest to newest',
     'created-1': 'Created - Newest to oldest',
@@ -379,26 +405,49 @@ const sortOrderNames = {
     'az-0': 'Alphabetically - A-Z',
     'az-1': 'Alphabetically - Z-A'
 }
-async function changeActiveList(list, force = false) {
+function changeActiveList(list, force = false) {
     const isSameList = (activeList.id == list.id);
     clearTimeout(changeListTimeout);
     if (!isSameList) {
         _id('list').classList.remove('visible');
         _id('listScrollArea').scrollTop = 0;
         _id('tasks').classList.remove('visible');
+        _id('tasksComplete').classList.remove('visible');
+        _id('tasksEmpty').style.display = 'none';
+        _id('showCompleted').style.display = 'none';
         hideEditTask();
     }
     document.title = list.name;
+    activeList = list;
+    localStorageObjSet('activeList', activeList);
     changeListTimeout = setTimeout(async() => {
         _id('listCont').classList.add('changeColours');
         _id('listCont').style.setProperty('--fgHue', list.hue);
         _id('topbarTitle').innerText = list.name;
         _id('listHeaderTitle').innerText = list.name;
         _id('taskSortText').innerText = sortOrderNames[`${list.sort_order}-${list.sort_reverse}`];
+        if (showCompleted) {
+            _id('showCompletedText').innerText = `Hide completed tasks`;
+            _id('showCompletedArrow').innerText = 'expand_less';
+            _id('tasksComplete').style.display = '';
+        } else {
+            _id('showCompletedText').innerText = `Show ${list.count_complete} completed task`;
+            if (list.count_complete !== 1)
+                _id('showCompletedText').innerText += 's';
+            _id('showCompletedArrow').innerText = 'expand_more';
+            _id('tasksComplete').style.display = 'none';
+        }
         _id('list').classList.add('visible');
-        if (isSameList && !force) return;
+        if (isSameList && !force) {
+            _id('showCompleted').style.display = 'none';
+            if (list.count_complete > 0) _id('showCompleted').style.display = '';
+            checkListEmpty();
+            sortTasks();
+            return;
+        }
+        let resTasks = [];
         const res = await call_api(`tasks/pending?list=${list.id}`);
-        if (!res) {
+        if (!res.status == 'good') {
             _id('tasks').innerHTML = `
                 <div class="col gap-8 align-center">
                     <span style="color: var(--danger)">Failed to load tasks</span>
@@ -410,27 +459,42 @@ async function changeActiveList(list, force = false) {
             `;
             return;
         }
-        activeList = list;
-        localStorageObjSet('activeList', activeList);
-        if (res.tasks.length == 0) {
-            _id('tasks').innerHTML = `
-                <div class="empty col gap-8 align-center">
-                    <div class="icon">check_circle</div>
-                    <div class="title">You're all caught up!</div>
-                    <div class="desc">Sit back and relax or add a new task below.</div>
-                </div>
-            `;
-        } else if (JSON.stringify(tasks) !== JSON.stringify(res.tasks)) {
+        resTasks = res.tasks;
+        if (showCompleted) {
+            const res = await call_api(`tasks/complete?list=${list.id}`);
+            if (!res.status == 'good') {
+                _id('tasksComplete').innerHTML = `
+                    <div class="col gap-8 align-center">
+                        <span style="color: var(--danger)">Failed to load completed tasks</span>
+                        <button class="btn small" onClick="updateLists()">
+                            <div class="icon">refresh</div>
+                            Try again
+                        </button>
+                    </div>
+                `;
+                return;
+            }
+            resTasks = [...resTasks, ...res.tasks];
+        }
+        if (JSON.stringify(tasks) !== JSON.stringify(resTasks)) {
             _id('tasks').innerHTML = '';
-            res.tasks.forEach((task) => {
+            _id('tasksComplete').innerHTML = '';
+            resTasks.forEach((task) => {
                 showTask(task);
                 if (task.id == activeTask.id)
                     editTask(task, true);
             });
         }
-        tasks = res.tasks;
+        tasks = resTasks;
         sortTasks();
+        checkListEmpty();
         _id('tasks').classList.add('visible');
+        if (showCompleted) {
+            setTimeout(() => {
+                _id('tasksComplete').classList.add('visible');
+            }, 0);
+        }
+        if (list.count_complete > 0) _id('showCompleted').style.display = '';
         _id('listScrollArea').dispatchEvent(new Event('scroll'));
     }, ((isSameList) ? 0 : 200));
 }
@@ -452,7 +516,7 @@ function addHueCircles(el, parent) {
         hueCircles.push(`<div class="row gap-10">${tmp.join('')}</div>`);
     el.insertAdjacentHTML('beforeend', hueCircles.join(''));
     [..._class(`hueCircle`)].forEach((el) => {
-        el.addEventListener('click', () => {
+        on(el, 'click', () => {
             [..._class('hueCircle')].forEach((circle) => {
                 circle.classList.remove('selected');
             });
@@ -493,14 +557,14 @@ function createList() {
     }]);
     addHueCircles(_id(hueCircleContId), _id(id));
     _class('hueCircle')[Math.round(Math.random()*(9-1))].click();
-    _id('newListName').addEventListener('input', () => {
+    on(_id('newListName'), 'input', () => {
         const value = _id('newListName').value;
         _id(createId).disabled = true;
         if (value.length > 0 && value.length < 64 )
             _id(createId).disabled = false;
     });
     _id('newListName').focus();
-    _id(id).addEventListener('keypress', (e) => {
+    on(_id(id), 'keypress', (e) => {
         if (e.code == 'Enter') _id(createId).click();
     });
 }
@@ -527,14 +591,14 @@ function createListFolder() {
                 updateLists();
         }
     }]);
-    _id('newFolderName').addEventListener('input', () => {
+    on(_id('newFolderName'), 'input', () => {
         const value = _id('newFolderName').value;
         _id(createId).disabled = true;
         if (value.length > 0 && value.length < 64)
             _id(createId).disabled = false;
     });
     _id('newFolderName').focus();
-    _id(id).addEventListener('keypress', (e) => {
+    on(_id(id), 'keypress', (e) => {
         if (e.code == 'Enter') _id(createId).click();
     });
 }
@@ -578,7 +642,7 @@ function editList(list) {
     } catch(e) {
         _class('hueCircle')[0].click();
     }
-    _id('listName').addEventListener('input', () => {
+    on(_id('listName'), 'input', () => {
         const value = _id('listName').value;
         _id(doneId).disabled = true;
         if (value.length > 0 && value.length < 64 )
@@ -591,7 +655,7 @@ function editList(list) {
         _id('listName').selectionStart = _id('listName').value.length;
         _id('listName').selectionEnd = _id('listName').value.length;
     }, 50);
-    _id(id).addEventListener('keypress', (e) => {
+    on(_id(id), 'keypress', (e) => {
         if (e.code == 'Enter') _id(doneId).click();
     });
 }
@@ -618,7 +682,7 @@ function editListFolder(folder) {
                 updateLists();
         }
     }]);
-    _id('newFolderName').addEventListener('input', () => {
+    on(_id('newFolderName'), 'input', () => {
         const value = _id('newFolderName').value;
         _id(createId).disabled = true;
         if (value.length > 0 && value.length < 64)
@@ -627,8 +691,111 @@ function editListFolder(folder) {
     _id('newFolderName').value = folder.name;
     _id('newFolderName').dispatchEvent(new Event('input'));
     _id('newFolderName').focus();
-    _id(id).addEventListener('keypress', (e) => {
+    on(_id(id), 'keypress', (e) => {
         if (e.code == 'Enter') _id(createId).click();
+    });
+}
+
+/**
+ * Prompts the user to select a date and time.
+ * @param {function} callback The function to call with the resulting date object, not called if the user doesn't select a date
+ * @param {boolean} includeDate If false, the calendar will be hidden
+ * @param {boolean} includeTime If false, the clock will be hidden
+ * @param {Date} startingDate The date at which to start from
+ */
+function selectDateTime(callback, includeDate = true, includeTime = true, startingDate = new Date()) {
+    let title = ['Select'];
+    if (includeDate) title.push('date');
+    if (includeDate && includeTime) title.push('and');
+    if (includeTime) title.push('time');
+    const today = new Date();
+    if (!startingDate || !startingDate.getTime()) startingDate = new Date();
+    let navDate = new Date(startingDate.getTime());
+    let selDate = new Date(startingDate.getTime());
+    let id = {
+        title: randomHex(),
+        days: randomHex(),
+        prev: randomHex(),
+        next: randomHex(),
+    }
+    id.popup = showPopup(title.join(' '), `
+        <div class="col gap-10 dateSelect">
+            <div class="row gap-10 align-center no-wrap">
+                <button id="${id.prev}" class="btn alt2 noShadow iconOnly">
+                    <div class="icon">arrow_back</div>
+                </button>
+                <div id="${id.title}" class="text-center flex-grow monthTitle"></div>
+                <button id="${id.next}" class="btn alt2 noShadow iconOnly">
+                    <div class="icon">arrow_forward</div>
+                </button>
+            </div>
+            <div class="calendar col gap-8 no-wrap">
+                <div class="weekdays">
+                    <span>S</span>
+                    <span>M</span>
+                    <span>T</span>
+                    <span>W</span>
+                    <span>T</span>
+                    <span>F</span>
+                    <span>S</span>
+                </div>
+                <div id="${id.days}" class="days"></div>
+            </div>
+        </div>
+    `, [{
+        label: 'Cancel',
+        escape: true
+    }, {
+        label: 'Select',
+        primary: true,
+        action: () => {
+            callback(selDate);
+        }
+    }]);
+    const changeMonth = () => {
+        const date = new Date(`${dayjs(navDate).format('YYYY-MM')}-01T12:00:00`);
+        _id(id.title).innerText = dayjs(date).format('MMMM YYYY');
+        let timestamp = (date.getTime()-(1000*60*60*24*(date.getDay())));
+        _id(id.days).innerHTML = '';
+        loop(35, (i) => {
+            const dayId = randomHex();
+            const day = new Date(timestamp+(1000*60*60*24*i));
+            _id(id.days).insertAdjacentHTML('beforeend', `
+                <button id="${dayId}" class="btn ${(dayjs(day).format('YYYY-MM-DD') == dayjs(selDate).format('YYYY-MM-DD')) ? '':'alt2'} iconOnly noShadow day ${(day.getMonth() != date.getMonth()) ? 'outside':''}" data-date="${dayjs(day).format('YYYY-MM-DD')}">
+                    ${day.getDate()}
+                </button>
+            `);
+            on(_id(dayId), 'click', () => {
+                loopEach(_qsa(':not(.alt2)', _id(id.days)), (el) => {
+                    el.classList.add('alt2');
+                });
+                _id(dayId).classList.remove('alt2');
+                selDate = day;
+            });
+        });
+    };
+    changeMonth();
+    on(_id(id.prev), 'click', () => {
+        let month = navDate.getMonth();
+        let year = navDate.getFullYear();
+        month--;
+        if (month < 0) {
+            month = 11;
+            year--;
+        }
+        navDate.setFullYear(year, month, 1);
+        changeMonth();
+    });
+    on(_id(id.next), 'click', () => {
+        let month = navDate.getMonth();
+        let year = navDate.getFullYear();
+        month++;
+        if (month > 11) {
+            month = 0;
+            year++;
+        }
+        navDate.setFullYear(year, month, 1);
+        changeMonth();
     });
 }
 
@@ -638,7 +805,17 @@ async function editTask(task, stayOpen = false) {
     if (task.id == activeTask.id && !stayOpen)
         return hideEditTask();
     activeTask = task;
+    _id('editTaskRadio').classList.remove('complete');
     _id('editTaskName').innerText = task.name;
+    _id('dueDateText').style.display = 'none';
+    _id('removeDueDate').style.display = 'none';
+    if (task.is_complete)
+        _id('editTaskRadio').classList.add('complete');
+    if (task.due_date) {
+        _id('dueDateText').style.display = '';
+        _id('removeDueDate').style.display = '';
+        _id('dueDateText').innerText = dayjs(new Date(task.due_date)).format('MMMM Do, YYYY');
+    }
     clearTimeout(editTaskTransitionTimeout);
     _id('editTaskCont').classList.add('visible');
     editTaskTransitionTimeout = setTimeout(() => {
@@ -656,12 +833,13 @@ function hideEditTask() {
 
 // Run once login is successful
 async function init() {
+    dayjs.extend(dayjs_plugin_advancedFormat);
     // Update profile elements
     _id('avatar').src = `https://cdn.discordapp.com/avatars/${user.discord_id}/${user.picture}.png?size=512`;
     _id('username').innerText = user.name;
     _id('discriminator').innerText = `#${user.discriminator}`;
     // Add profile context menu
-    _id('avatar').addEventListener('contextmenu', (e) => {
+    on(_id('avatar'), 'contextmenu', (e) => {
         e.preventDefault();
         showContext([{
             type: 'item',
@@ -692,7 +870,7 @@ async function init() {
         }]);
     });
     // Handle sign out button
-    _id('signOut').addEventListener('click', () => {
+    on(_id('signOut'), 'click', () => {
         showPopup('Sign out?', `Are you sure you want to sign out? Any unsaved changes will be lost.`, [{
             label: 'No',
             escape: true
@@ -708,11 +886,11 @@ async function init() {
         }]);
     });
     // Handle creating lists
-    _id('createList').addEventListener('click', createList);
-    _id('createListFolder').addEventListener('click', createListFolder);
+    on(_id('createList'), 'click', createList);
+    on(_id('createListFolder'), 'click', createListFolder);
     // Handle rearranging lists
     let is_reordering = false;
-    _id('reoderLists').addEventListener('click', () => {
+    on(_id('reoderLists'), 'click', () => {
         if (!is_reordering) {
             _id('reoderLists').classList.remove('alt');
             _id('lists').classList.add('sortable');
@@ -723,7 +901,7 @@ async function init() {
         is_reordering = !is_reordering;
     });
     // Handle titlebar on scroll
-    _id('listScrollArea').addEventListener('scroll', () => {
+    on(_id('listScrollArea'), 'scroll', () => {
         const el = _id('listScrollArea');
         if (el.scrollTop > 50)
             _id('topbar').classList.add('scrolled');
@@ -736,22 +914,22 @@ async function init() {
             _id('addTaskCont').classList.remove('scrolled');
     });
     // Handle the menu
-    _id('menuOpen').addEventListener('click', () => {
+    on(_id('menuOpen'), 'click', () => {
         _id('sidebar').classList.add('visible');
         _id('sidebarDimming').classList.add('visible');
         escapeQueue.push(() => {
             _id('sidebarDimming').click();
         });
     });
-    _id('sidebarDimming').addEventListener('click', () => {
+    on(_id('sidebarDimming'), 'click', () => {
         _id('sidebar').classList.remove('visible');
         _id('sidebarDimming').classList.remove('visible');
     });
-    _id('menuClose').addEventListener('click', () => {
+    on(_id('menuClose'), 'click', () => {
         _id('sidebarDimming').click();
     });
     // Handle sorting tasks
-    _id('sortTasks').addEventListener('click', () => {
+    on(_id('sortTasks'), 'click', () => {
         let data = [];
         Object.keys(sortOrderNames).forEach((key) => {
             const name = sortOrderNames[key];
@@ -760,13 +938,12 @@ async function init() {
                 type: 'item',
                 name: name,
                 action: async() => {
-                    const res = await call_api(`lists/sort?id=${activeList.id}&order=${keySplit[0]}&reverse=${(parseInt(keySplit[1])) ? 'true':'false'}`);
+                    const res = await call_api(`lists/sortTasks?id=${activeList.id}&order=${keySplit[0]}&reverse=${(parseInt(keySplit[1])) ? 'true':'false'}`);
                     if (res.status === 'good') {
                         updateLists();
                         activeList.sort_order = keySplit[0];
                         activeList.sort_reverse = parseInt(keySplit[1]);
                         changeActiveList(activeList);
-                        sortTasks();
                     }
                 }
             });
@@ -774,20 +951,20 @@ async function init() {
         showContext(data);
     });
     // Handle adding tasks
-    _id('inputNewTaskName').addEventListener('keydown', (e) => {
+    on(_id('inputNewTaskName'), 'keydown', (e) => {
         if (e.code == 'Enter') {
             e.preventDefault();
             _id('addTask').click();
         }
     });
-    _id('inputNewTaskName').addEventListener('input', () => {
+    on(_id('inputNewTaskName'), 'input', () => {
         const value = _id('inputNewTaskName').innerText.replace(/(\r|\n)/g, '');
         if (value.length > 0 && value.length < 256)
             _id('addTask').disabled = false;
         else
             _id('addTask').disabled = true;
     });
-    _id('addTask').addEventListener('click', async() => {
+    on(_id('addTask'), 'click', async() => {
         const value = _id('inputNewTaskName').innerText;
         _id('addTask').disabled = true;
         _id('inputNewTaskName').innerText = '';
@@ -801,23 +978,28 @@ async function init() {
         }
     });
     // Handle the edit list button
-    _id('listEdit').addEventListener('click', () => {
+    on(_id('listEdit'), 'click', () => {
         editList(activeList);
     });
+    // Handle showing/hiding completed tasks
+    on(_id('showCompleted'), 'click', () => {
+        showCompleted = !showCompleted;
+        changeActiveList(activeList, true);
+    });
     // Handle task editing
-    _id('editTaskClose').addEventListener('click', hideEditTask);
-    _id('editTaskCont').addEventListener('click', () => {
+    on(_id('editTaskClose'), 'click', hideEditTask);
+    on(_id('editTaskCont'), 'click', () => {
         if (_id('editTaskCont').getBoundingClientRect().x == 0)
             _id('editTaskClose').click();
     });
     escapeQueue.push(() => {
         _id('editTaskClose').click();
     });
-    _id('editTaskCard').addEventListener('click', (e) => {
+    on(_id('editTaskCard'), 'click', (e) => {
         e.stopPropagation();
     });
     let taskNameEditTimeout;
-    _id('editTaskName').addEventListener('input', (e) => {
+    on(_id('editTaskName'), 'input', (e) => {
         if (e.code == 'Enter') {
             e.preventDefault();
             return false;
@@ -831,19 +1013,53 @@ async function init() {
                 name: value
             });
             if (res.status == 'good') {
-                _qs(`.task[data-id="${task.id}"]`).remove();
                 showTask(res.task);
                 sortTasks();
                 activeTask = res.task;
-                for (let i = 0; i < tasks.length; i++) {
+                loop(tasks.length, (i) => {
                     if (tasks[i].id == activeTask.id)
                         tasks[i] = activeTask;
-                }
+                });
             }
         }, 500);
     });
+    on(_id('setDueDate'), 'click', () => {
+        const task = JSON.parse(JSON.stringify(activeTask));
+        selectDateTime(async(date) => {
+            date = dayjs(date).format('YYYY-M-D');
+            const res = await call_api(`tasks/edit?id=${task.id}`, {
+                due_date: date
+            });
+            if (res.status == 'good') {
+                activeTask = res.task;
+                showTask(activeTask);
+                sortTasks();
+                editTask(activeTask, true);
+                loop(tasks.length, (i) => {
+                    if (tasks[i].id == activeTask.id)
+                        tasks[i] = activeTask;
+                });
+            }
+        }, true, false, new Date(task.due_date));
+    });
+    on(_id('removeDueDate'), 'click', async() => {
+        const task = JSON.parse(JSON.stringify(activeTask));
+        const res = await call_api(`tasks/edit?id=${task.id}`, {
+            due_date: 'null'
+        });
+        if (res.status == 'good') {
+            activeTask = res.task;
+            showTask(activeTask);
+            sortTasks();
+            editTask(activeTask, true);
+            loop(tasks.length, (i) => {
+                if (tasks[i].id == activeTask.id)
+                    tasks[i] = activeTask;
+            });
+        }
+    });
     // Handle window resizing
-    window.addEventListener('resize', () => {
+    on(window, 'resize', () => {
         _id('listScrollArea').dispatchEvent(new Event('scroll'));
     });
     // Handle refreshing
