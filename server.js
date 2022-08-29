@@ -305,18 +305,21 @@ const srv = http.createServer((req, res) => {
                 if (!is_param_valid(id, entry)) return;
                 const name = postBody.name || entry.name;
                 if (!is_param_valid(name, (name.length > 0 && name.length < 256))) return;
-                const desc = postBody.desc || entry.desc || '';
+                let desc = postBody.desc;
+                if (desc !== '') desc = desc || entry.desc || '';
                 if (!is_param_valid(true, (desc.length < 2048))) return;
                 let due = postBody.due_date || entry.due_date || null;
                 if (due === 'null') due = null;
-                if (!is_param_valid(true, (due === null || new Date(due).getTime()))) return;
+                let dueTime = new Date(due).getTime() || 0;
+                if (!is_param_valid(true, (due === null || dueTime))) return;
                 if (entry.name !== name)
                     db.prepare(`UPDATE tasks SET name = ? WHERE id = ?`).run(name, id);
                 if (entry.desc !== desc)
                     db.prepare(`UPDATE tasks SET desc = ? WHERE id = ?`).run(desc, id);
                 if (entry.due_date !== due)
-                    db.prepare(`UPDATE tasks SET due_date = ? WHERE id = ?`).run(due, id);
+                    db.prepare(`UPDATE tasks SET due_date = ?, due_date_time = ? WHERE id = ?`).run(due, dueTime, id);
                 out.task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+                out.list = db.prepare('SELECT * FROM lists WHERE id = ?').get(entry.list_id);
                 return end_api(out);
             },
             'tasks/toggleComplete': () => {
@@ -365,6 +368,15 @@ const srv = http.createServer((req, res) => {
                 const listId = params.get('list');
                 if (!is_param_valid(listId, db.prepare('SELECT id FROM lists WHERE owner = ? AND id = ?').get(user.id, listId))) return;
                 out.tasks = db.prepare('SELECT * FROM tasks WHERE owner = ? AND list_id = ? AND is_complete = 1').all(user.id, listId) || {};
+                return end_api(out);
+            },
+            'tasks/upcoming': () => {
+                if (!is_method_valid('POST')) return;
+                const user = get_active_user();
+                if (!user) return;
+                const days = parseInt(params.get('days')) || 7;
+                if (!is_param_valid(days, (days > 0 && days <= 90))) return;
+                out.tasks = db.prepare('SELECT * FROM tasks WHERE owner = ? AND due_date_time > 0 AND due_date_time < ? AND is_complete = 0').all(user.id, (Date.now()+(1000*60*60*24*days))) || {};
                 return end_api(out);
             }
         }

@@ -105,6 +105,11 @@
                                 <div class="title">You're all caught up!</div>
                                 <div class="desc">Sit back and relax or add a new task below.</div>
                             </div>
+                            <div id="tasksEmptySchedule" class="empty col gap-8 align-center">
+                                <div class="icon">event_available</div>
+                                <div class="title">You're all caught up!</div>
+                                <div class="desc">Created tasks that are overdue or due in less than 14 days will appear here.</div>
+                            </div>
                             <div id="tasks" class="tasks"></div>
                             <div class="row">
                                 <button id="showCompleted" class="btn alt2">
@@ -126,7 +131,7 @@
                         </div>
                     </div>
                     <div id="editTaskCont" class="no-shrink">
-                        <div id="editTaskCard" class="col gap-3">
+                        <div id="editTaskCard" class="col">
                             <div class="topbar row align-center gap-10 no-wrap">
                                 <div id="editTaskClose" class="btn alt2 iconOnly noShadow" title="Close task editor">
                                     <div class="icon">close</div>
@@ -138,7 +143,7 @@
                                     <div id="editTaskRadio" class="radio"></div>
                                     <div id="editTaskName" class="name flex-grow" placeholder="Your task needs a name!" tabindex="0" contenteditable></div>
                                 </div>
-                                <div style="padding: 0px 10px 10px 10px">
+                                <div style="padding: 5px 10px 15px 10px">
                                     <div id="steps" class="col"></div>
                                     <button class="btn small noShadow">
                                         <div class="icon">add</div>
@@ -150,13 +155,17 @@
                                 <button id="setDueDate" class="btn iconOnly noShadow">
                                     <div class="icon">edit_calendar</div>
                                 </button>
-                                <div class="col gap-3 flex-grow">
+                                <div class="col gap-3 flex-grow no-select">
                                     <span>Set due date</span>
                                     <div id="dueDateText"></div>
                                 </div>
-                                <button id="removeDueDate" class="btn alt2 iconOnly noShadow">
+                                <button id="removeDueDate" class="btn alt iconOnly noShadow">
                                     <div class="icon">close</div>
                                 </button>
+                            </div>
+                            <div class="section col gap-8 editTaskDescCont">
+                                <div class="label no-select">Notes</div>
+                                <div id="editTaskDesc" class="desc" placeholder="Add additional notes to this task..." contenteditable tabindex="0"></div>
                             </div>
                         </div>
                     </div>

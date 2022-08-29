@@ -30,7 +30,7 @@ CREATE TABLE IF NOT EXISTS "lists" (
 	"count_complete"	INTEGER NOT NULL DEFAULT 0,
 	"sort_order"	TEXT NOT NULL DEFAULT 'created',
 	"sort_reverse"	INTEGER NOT NULL DEFAULT 0
-);
+, "mtime"	INTEGER NOT NULL DEFAULT 0);
 CREATE TABLE IF NOT EXISTS "list_folders" (
 	"id"	INTEGER NOT NULL UNIQUE,
 	"owner"	INTEGER NOT NULL,
@@ -46,6 +46,7 @@ CREATE TABLE IF NOT EXISTS "tasks" (
 	"owner"	INTEGER NOT NULL,
 	"name"	TEXT NOT NULL,
 	"due_date"	TEXT,
+	"due_date_time"	INTEGER NOT NULL DEFAULT 0,
 	"steps"	TEXT DEFAULT '[]',
 	"desc"	TEXT,
 	"is_complete"	INTEGER NOT NULL DEFAULT 0,

@@ -87,15 +87,56 @@ async function copyText(text) {
     return navigator.clipboard.writeText(text);
 }
 
+function dueDateDiff(date) {
+    const today = new Date();
+    const diff = today.getTime()-date.getTime();
+    return diff;
+}
+function dueDateFormat(date) {
+    const today = new Date();
+    const diff = dueDateDiff(date);
+    if (diff < 0 && diff > -(1000*60*60*24))
+        return 'Tomorrow';
+    if (diff > 0 && diff < (1000*60*60*24))
+        return 'Today';
+    if (diff > (1000*60*60*24) && diff < (1000*60*60*24*2))
+        return 'Yesterday';
+    if (date.getFullYear() !== today.getFullYear())
+        return dayjs(date).format('ddd, MMM Do, YYYY');
+    return dayjs(date).format('ddd, MMM Do');
+}
+
+// Make a call to the API using the active user's access token
+// Returns the response as decoded JSON
+let callApiPopupTimeout;
 async function call_api(endpoint, data = {}, method = 'POST') {
     Object.assign(data, { token: token });
+    clearTimeout(callApiPopupTimeout);
+    let popupId = false;
+    callApiPopupTimeout = setTimeout(() => {
+        popupId = showPopup(`Hang tight`, `Your request to the server is taking longer than expected...`);
+    }, 1000);
     const res = await fetch(`/api/${endpoint}`, {
         method: method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(data)
+    }).catch((e) => {
+        showPopup(`Request failed`, `A connection with the server couldn't be established. Make sure you're connected to the internet, then try again.`, [{
+            label: 'Refresh app',
+            action: window.location.reload
+        }]);
     });
+    clearTimeout(callApiPopupTimeout);
+    if (popupId) hidePopup(popupId);
     if (!res.ok) {
-        showPopup(`Request failed`, `The request to API endpoint <b>${endpoint}</b> failed! Make sure you're connected to the internet, then try again.`, [{
+        let json = null;
+        try {
+            json = await res.json();
+        } catch(e) {}
+        showPopup(`Request failed`, `
+            <p>The request to API endpoint <b>${endpoint}</b> failed!</p>
+            <p>${JSON.stringify(json)}</p>
+        `, [{
             label: 'Refresh app',
             action: window.location.reload
         }, {
@@ -103,10 +144,6 @@ async function call_api(endpoint, data = {}, method = 'POST') {
             escape: true,
             primary: true
         }]);
-        let json = null;
-        try {
-            json = await res.json();
-        } catch(e) {}
         console.log(`Failed API response`, json, res);
         return false;
     }
@@ -122,6 +159,7 @@ let listsById = (id) => {
     }
     return false;
 }
+// Update the lists shown in the side panel
 async function updateLists(force = false) {
     const res = await call_api('lists');
     if (!res) {
@@ -136,7 +174,13 @@ async function updateLists(force = false) {
         `;
         return;
     }
-    const listsCombo = [...res.lists, ...res.folders];
+    const listsCombo = [{
+        id: 'schedule',
+        hue: 110,
+        name: 'Scheduled tasks',
+        sort_order: 'due',
+        sort_reverse: 0
+    }, ...res.lists, ...res.folders];
     if (JSON.stringify(lists) !== JSON.stringify(listsCombo) || force) {
         lists = listsCombo;
         lists.sort((a, b) => {
@@ -147,6 +191,7 @@ async function updateLists(force = false) {
         });
         _id('lists').innerHTML = '';
         lists.forEach((list) => {
+            if (list.id == 'schedule') return;
             const elId = randomHex();
             if (list.sort_order) {
                 _id('lists').insertAdjacentHTML('beforeend', `
@@ -252,17 +297,23 @@ async function updateLists(force = false) {
     return;
 }
 
+// Render or re-render a task in the current list
 function showTask(task) {
     const id = randomHex();
     const existingEl = _qs(`.task[data-id="${task.id}"]`);
     if (existingEl) existingEl.remove();
+    if (!showCompleted && task.is_complete) return;
+    if (activeList.id == 'schedule' && !task.due_date_time) return;
     _id((task.is_complete) ? 'tasksComplete':'tasks').insertAdjacentHTML('beforeend', `
-        <button id="${id}" class="task ${(task.is_complete) ? 'complete':''}" data-id="${task.id}" data-due="${task.due_date}">
-            <div id="${id}-radio" class="radio" tabindex="0" title="${(task.is_complete) ? 'Mark task as incomplete':'Mark task as complete'}"></div>
+        <button id="${id}" class="task ${(task.is_complete) ? 'complete':''}" data-id="${task.id}" data-due-time="${task.due_date_time}">
+            <div id="${id}-radio" class="radio" tabindex="0" title="Mark task as ${(task.is_complete) ? 'in':''}complete"></div>
             <div class="label">
+                ${(activeList.id == 'schedule') ? `<div class="desc changeColours" style="--fgHue: ${listsById(task.list_id).hue}; color: var(--f80)">
+                    ${listsById(task.list_id).name}
+                </div>`:''}
                 <div id="${id}-name" class="name"></div>
-                ${(task.due_date) ? `<div class="desc dueDate">
-                    Due ${dayjs(new Date(task.due_date)).format(`MMMM Do, YYYY`)}
+                ${(task.due_date) ? `<div class="desc dueDate row align-center gap-5 no-wrap ${(dueDateFormat(new Date(task.due_date))).toLowerCase()} ${(dueDateDiff(new Date(task.due_date)) > 0) ? 'overdue':''}">
+                    <div>Due ${dueDateFormat(new Date(task.due_date))}</div>
                 </div>`:''}
                 ${(task.desc) ? `<div id="${id}-desc" class="desc"></div>`:''}
             </div>
@@ -344,6 +395,7 @@ function showTask(task) {
         }
     });
 }
+// Sort tasks using the order defined in their list entry
 function sortTasks() {
     // https://stackoverflow.com/questions/34685316/reorder-html-elements-in-dom
     const tasksCont = _id('tasks');
@@ -367,9 +419,14 @@ function sortTasks() {
             });
         },
         // Sort by due date
+        // Make the date timestamp into a float, with the task's creation date
+        // as the right side, so tasks with the same due date are still sorted
+        // by creation date
         'due': (a, b) => {
-            a = parseInt(a.dataset.due) || 0;
-            b = parseInt(b.dataset.due) || 0;
+            a = parseInt(a.dataset.dueTime) || new Date('9999-12-31').getTime();
+            b = parseInt(b.dataset.dueTime) || new Date('9999-12-31').getTime();
+            // a = parseFloat(`${a}.${a.dataset.id}`);
+            // b = parseFloat(`${b}.${b.dataset.id}`);
             return a-b;
         }
     }
@@ -385,18 +442,25 @@ function sortTasks() {
     tasksComplete.forEach(task => {
         tasksCompleteCont.appendChild(task);
     });
+    checkListEmpty();
 }
+// If the current list is empty, display some filler text
 function checkListEmpty() {
-    if (_class('task', _id('tasks')).length == 0)
-        _id('tasksEmpty').style.display = '';
-    else
-        _id('tasksEmpty').style.display = 'none';
+    _id('tasksEmpty').style.display = 'none';
+    _id('tasksEmptySchedule').style.display = 'none';
+    if (_class('task', _id('tasks')).length == 0) {
+        let id = 'tasksEmpty';
+        if (activeList.id == 'schedule') id = 'tasksEmptySchedule';
+        _id(id).style.display = '';
+    }
 }
 
+// Change the currently active list
 let changeListTimeout;
 let activeList = { id: 0 };
 let tasks = [];
 let showCompleted = false;
+let lastSyncHour = '0';
 const sortOrderNames = {
     'created-0': 'Created - Oldest to newest',
     'created-1': 'Created - Newest to oldest',
@@ -406,8 +470,16 @@ const sortOrderNames = {
     'az-1': 'Alphabetically - Z-A'
 }
 function changeActiveList(list, force = false) {
-    const isSameList = (activeList.id == list.id);
     clearTimeout(changeListTimeout);
+    // Force force if the current hour has changed
+    // This is to make sure our relative due dates are up to date
+    if (lastSyncHour !== dayjs().format('H')) {
+        force = true;
+        lastSyncHour = dayjs().format('H');
+    }
+    // If this is a list different than our current active one,
+    // hide things while we fetch and render the new list
+    const isSameList = (activeList.id == list.id);
     if (!isSameList) {
         _id('list').classList.remove('visible');
         _id('listScrollArea').scrollTop = 0;
@@ -417,15 +489,20 @@ function changeActiveList(list, force = false) {
         _id('showCompleted').style.display = 'none';
         hideEditTask();
     }
+    // Update page title and active list variable
     document.title = list.name;
     activeList = list;
     localStorageObjSet('activeList', activeList);
+    // Wait for animations to complete if needed
     changeListTimeout = setTimeout(async() => {
+        // Update list display
         _id('listCont').classList.add('changeColours');
         _id('listCont').style.setProperty('--fgHue', list.hue);
         _id('topbarTitle').innerText = list.name;
         _id('listHeaderTitle').innerText = list.name;
         _id('taskSortText').innerText = sortOrderNames[`${list.sort_order}-${list.sort_reverse}`];
+        // Update the show completed button depending on whether
+        // completed tasks are shown or not
         if (showCompleted) {
             _id('showCompletedText').innerText = `Hide completed tasks`;
             _id('showCompletedArrow').innerText = 'expand_less';
@@ -437,7 +514,19 @@ function changeActiveList(list, force = false) {
             _id('showCompletedArrow').innerText = 'expand_more';
             _id('tasksComplete').style.display = 'none';
         }
+        // Show/hide some list elements conditionally
+        _id('listEdit').style.display = '';
+        _id('addTaskCont').style.display = '';
+        _id('sortTasks').disabled = false;
+        if (list.id == 'schedule') {
+            _id('listEdit').style.display = 'none';
+            _id('addTaskCont').style.display = 'none';
+            _id('sortTasks').disabled = true;
+        }
+        // Make the list visible
         _id('list').classList.add('visible');
+        // If this is the same list as before and we aren't forcing new
+        // data to be fetched, finish up and stop here
         if (isSameList && !force) {
             _id('showCompleted').style.display = 'none';
             if (list.count_complete > 0) _id('showCompleted').style.display = '';
@@ -445,8 +534,11 @@ function changeActiveList(list, force = false) {
             sortTasks();
             return;
         }
+        // Fetch and store pending tasks
         let resTasks = [];
-        const res = await call_api(`tasks/pending?list=${list.id}`);
+        let mainUrl = `tasks/pending?list=${list.id}`;
+        if (list.id == 'schedule') mainUrl = `tasks/upcoming?days=14`;
+        const res = await call_api(mainUrl);
         if (!res.status == 'good') {
             _id('tasks').innerHTML = `
                 <div class="col gap-8 align-center">
@@ -460,7 +552,9 @@ function changeActiveList(list, force = false) {
             return;
         }
         resTasks = res.tasks;
-        if (showCompleted) {
+        // If completed tasks are shown, fetch those and combine them with
+        // the pending tasks
+        if (showCompleted && list.id != 'schedule') {
             const res = await call_api(`tasks/complete?list=${list.id}`);
             if (!res.status == 'good') {
                 _id('tasksComplete').innerHTML = `
@@ -476,7 +570,9 @@ function changeActiveList(list, force = false) {
             }
             resTasks = [...resTasks, ...res.tasks];
         }
-        if (JSON.stringify(tasks) !== JSON.stringify(resTasks)) {
+        // If the new set of tasks doesn't match the old set, or if
+        // we're forcing new data to be rendered, render the tasks
+        if (JSON.stringify(tasks) !== JSON.stringify(resTasks) || force) {
             _id('tasks').innerHTML = '';
             _id('tasksComplete').innerHTML = '';
             resTasks.forEach((task) => {
@@ -486,8 +582,10 @@ function changeActiveList(list, force = false) {
             });
         }
         tasks = resTasks;
+        // Adjust for sorting and emptiness
         sortTasks();
         checkListEmpty();
+        // Make the tasks visible
         _id('tasks').classList.add('visible');
         if (showCompleted) {
             setTimeout(() => {
@@ -806,7 +904,14 @@ async function editTask(task, stayOpen = false) {
         return hideEditTask();
     activeTask = task;
     _id('editTaskRadio').classList.remove('complete');
-    _id('editTaskName').innerText = task.name;
+    if (_id('editTaskName').innerText !== task.name) {
+        _id('editTaskName').blur();
+        _id('editTaskName').innerText = task.name;
+    }
+    if (_id('editTaskDesc').innerText !== task.desc) {
+        _id('editTaskDesc').blur();
+        _id('editTaskDesc').innerText = task.desc || '';
+    }
     _id('dueDateText').style.display = 'none';
     _id('removeDueDate').style.display = 'none';
     if (task.is_complete)
@@ -814,7 +919,7 @@ async function editTask(task, stayOpen = false) {
     if (task.due_date) {
         _id('dueDateText').style.display = '';
         _id('removeDueDate').style.display = '';
-        _id('dueDateText').innerText = dayjs(new Date(task.due_date)).format('MMMM Do, YYYY');
+        _id('dueDateText').innerText = dueDateFormat(new Date(task.due_date));
     }
     clearTimeout(editTaskTransitionTimeout);
     _id('editTaskCont').classList.add('visible');
@@ -928,6 +1033,10 @@ async function init() {
     on(_id('menuClose'), 'click', () => {
         _id('sidebarDimming').click();
     });
+    // Handle showing the schedule list
+    on(_id('listSchedule'), 'click', () => {
+        changeActiveList(listsById('schedule'));
+    });
     // Handle sorting tasks
     on(_id('sortTasks'), 'click', () => {
         let data = [];
@@ -1001,12 +1110,11 @@ async function init() {
     let taskNameEditTimeout;
     on(_id('editTaskName'), 'input', (e) => {
         if (e.code == 'Enter') {
-            e.preventDefault();
-            return false;
+            return e.preventDefault();
         }
         clearTimeout(taskNameEditTimeout);
         const task = JSON.parse(JSON.stringify(activeTask));
-        const value = _id('editTaskName').innerText.replace(/\n/g, '').replace(/\r/g, '');
+        const value = _id('editTaskName').innerText.replace(/\n/g, '').replace(/\r/g, '').trim();
         if (value.length < 1 || value.length > 255) return;
         taskNameEditTimeout = setTimeout(async() => {
             const res = await call_api(`tasks/edit?id=${task.id}`, {
@@ -1023,6 +1131,9 @@ async function init() {
             }
         }, 500);
     });
+    on(_id('editTaskName'), 'paste', () => {
+        _id('editTaskName').innerText = _id('editTaskName').innerText.replace(/\n/g, '').replace(/\r/g, '').trim();
+    })
     on(_id('setDueDate'), 'click', () => {
         const task = JSON.parse(JSON.stringify(activeTask));
         selectDateTime(async(date) => {
@@ -1057,6 +1168,28 @@ async function init() {
                     tasks[i] = activeTask;
             });
         }
+    });
+    let taskDescEditTimeout;
+    on(_id('editTaskDesc'), 'input', (e) => {
+        clearTimeout(taskDescEditTimeout);
+        const task = JSON.parse(JSON.stringify(activeTask));
+        const value = _id('editTaskDesc').innerText.trim();
+        if (value.length == 0) _id('editTaskDesc').innerText = '';
+        if (value.length > 2047) return;
+        taskDescEditTimeout = setTimeout(async() => {
+            const res = await call_api(`tasks/edit?id=${task.id}`, {
+                desc: value
+            });
+            if (res.status == 'good') {
+                showTask(res.task);
+                sortTasks();
+                activeTask = res.task;
+                loop(tasks.length, (i) => {
+                    if (tasks[i].id == activeTask.id)
+                        tasks[i] = activeTask;
+                });
+            }
+        }, 500);
     });
     // Handle window resizing
     on(window, 'resize', () => {

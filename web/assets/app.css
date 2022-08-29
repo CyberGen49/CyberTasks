@@ -307,22 +307,22 @@ body {
 #tasksCont .tasks.visible {
     opacity: 1;
 }
-#tasksEmpty {
+#tasksCont .empty {
     padding: 20px 10px;
     color: var(--b70);
     text-align: center;
     user-select: none;
 }
-#tasksEmpty .icon {
+#tasksCont .empty .icon {
     font-family: 'Material Icons Outlined';
     font-size: 54px;
 }
-#tasksEmpty .title {
+#tasksCont .empty .title {
     font-family: 'Quicksand';
     font-size: 26px;
     font-weight: 600;
 }
-#tasksEmpty .desc {
+#tasksCont .empty .desc {
     line-height: 1.2;
 }
 #tasksCont .tasks .task {
@@ -409,10 +409,30 @@ body {
     font-size: 15px;
     color: var(--b70);
     line-height: 1.2;
+}
+#tasksCont .tasks .task .label .desc:not(.dueDate) {
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
+}
+#tasksCont .tasks .task .label .dueDate {
+    color: var(--b80);
+}
+#tasksCont .tasks .task .label .dueDate.overdue {
+    color: var(--danger);
+}
+#tasksCont .tasks .task .label .dueDate.overdue {
+    color: var(--danger);
+}
+#tasksCont .tasks .task .label .dueDate.today {
+    color: var(--f90);
+}
+#tasksCont .tasks .task .label .dueDate:before {
+    margin-top: -2px;
+    font-family: 'Material Symbols';
+    font-size: 20px;
+    content: 'event';
 }
 
 #addTaskCont {
@@ -457,6 +477,7 @@ body {
     flex-grow: 1;
     background: var(--b15);
     max-width: 375px;
+    width: 375px;
     display: none;
     opacity: 0;
     transition: 0.1s ease-in-out;
@@ -474,10 +495,11 @@ body {
     margin: 15px 15px 15px 5px;
     padding: 10px;
     background: var(--b18);
+    gap: 2px;
     border-radius: 20px;
     transition: 0.2s var(--bezier);
     box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.2);
-    scale: 1.15;
+    scale: 0.95;
 }
 #editTaskCont.ani #editTaskCard {
     scale: 1;
@@ -488,18 +510,38 @@ body {
         top: 0px;
         left: 0px;
         width: 100%;
+        max-width: 100%;
         height: 100%;
         background: rgba(0, 0, 0, 0.5);
-        padding: 10px;
         z-index: 8;
+        overflow: hidden;
     }
     #editTaskCont.visible {
         display: flex;
+        align-items: flex-end;
+        justify-content: center;
     }
     #editTaskCont #editTaskCard {
-        margin: auto;
-        width: 500px;
+        margin: 0px;
+        margin-top: 63px;
+        height: calc(100% - 63px);
+        max-width: 500px;
+        flex-grow: 1;
+        flex-shrink: 1;
+        overflow-y: auto;
         box-shadow: 0px 6px 15px 5px rgba(0, 0, 0, 0.2);
+        border-radius: 20px 20px 0px 0px;
+        padding-bottom: 20px;
+        transform: translateY(50px);
+        scale: 1;
+        scrollbar-width: none;
+    }
+    #editTaskCont #editTaskCard::-webkit-scrollbar {
+        display: none;
+    }
+    #editTaskCont.ani #editTaskCard {
+        box-shadow: 0px 6px 15px 5px rgba(0, 0, 0, 0.2);
+        transform: none;
     }
 }
 #editTaskCard .topbar {
@@ -516,9 +558,9 @@ body {
     word-break: break-word;
 }
 #editTaskCard .section {
-    padding: 10px;
+    padding: 15px 10px;
     background: var(--b25);
-    border-radius: 4px;
+    border-radius: 8px;
 }
 #editTaskCard .section:nth-of-type(2) {
     border-radius: 12px 12px 4px 4px;
@@ -529,26 +571,37 @@ body {
 #editTaskCard .taskNameCont {
     display: flex;
     align-items: center;
-    padding: 0px;
+    padding-right: 10px;
 }
 #editTaskCard .taskNameCont .radio {
     font-size: 42px;
     width: 58px;
 }
-#editTaskCard .taskNameCont .name {
+#editTaskCard .taskNameCont .name,
+#editTaskCard .editTaskDescCont .desc {
     padding: 10px 8px 10px 0px;
     line-height: 1.2;
     font-size: 20px;
     max-width: 100%;
     cursor: text;
-    display: flex;
     align-items: center;
     overflow-y: auto;
     overflow-x: hidden;
     word-break: break-word;
+    display: block;
+    white-space: pre-wrap;
 }
-#editTaskCard .taskNameCont .name:focus-visible {
+#editTaskCard .editTaskDescCont .desc {
+    padding: 0px 0px 5px 0px;
+    font-size: 16px;
+    line-height: 1.3;
+}
+#editTaskCard .taskNameCont .name:focus-visible,
+#editTaskCard .editTaskDescCont .desc:focus-visible {
     outline: none;
+}
+#editTaskCard .editTaskDescCont .label {
+    color: var(--b70);
 }
 #editTaskCard #dueDateText {
     font-family: 'Quicksand';
