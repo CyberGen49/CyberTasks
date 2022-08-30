@@ -106,6 +106,34 @@ function dueDateFormat(date) {
     return dayjs(date).format('ddd, MMM Do');
 }
 
+function addHueCircles(el, parent) {
+    let hueCircles = [];
+    const hues = [ 0, 25, 50, 110, 160, 200, 240, 280, 320 ];
+    let tmp = [];
+    hues.forEach((hue) => {
+        tmp.push(`
+            <button class="hueCircle changeColours" style="--fgHue: ${hue}" data-hue="${hue}"></button>
+        `);
+        if (tmp.length == 3) {
+            hueCircles.push(`<div class="row gap-10">${tmp.join('')}</div>`);
+            tmp = [];
+        }
+    });
+    if (tmp.length > 0)
+        hueCircles.push(`<div class="row gap-10">${tmp.join('')}</div>`);
+    el.insertAdjacentHTML('beforeend', hueCircles.join(''));
+    [..._class(`hueCircle`)].forEach((el) => {
+        on(el, 'click', () => {
+            [..._class('hueCircle')].forEach((circle) => {
+                circle.classList.remove('selected');
+            });
+            el.classList.add('selected');
+            parent.classList.add('changeColours');
+            parent.style.setProperty('--fgHue', el.dataset.hue);
+        });
+    });
+}
+
 // Make a call to the API using the active user's access token
 // Returns the response as decoded JSON
 let callApiPopupTimeout;
@@ -206,14 +234,15 @@ async function updateLists(force = false) {
                 });
                 on(_id(elId), 'contextmenu', (e) => {
                     e.preventDefault();
-                    showContext([{
+                    let items = [{
                         type: 'item',
                         name: 'Edit list...',
                         icon: 'edit',
                         action: () => {
                             editList(list);
                         }
-                    }, {
+                    }];
+                    if (lists.length > 2) items.push({
                         type: 'item',
                         name: 'Delete list...',
                         icon: 'delete',
@@ -230,19 +259,23 @@ async function updateLists(force = false) {
                                 action: async() => {
                                     const res = await call_api(`lists/delete?id=${list.id}`);
                                     if (res.status == 'good') {
-                                        updateLists();
+                                        await updateLists();
+                                        changeActiveList(lists[1]);
                                     }
                                 }
                             }]);
                         }
-                    }, { type: 'sep' }, {
+                    });
+                    items.push({ type: 'sep' });
+                    items.push({
                         type: 'item',
                         name: 'Copy list ID',
                         icon: 'code',
                         action: () => {
                             copyText(list.id);
                         }
-                    }]);
+                    });
+                    showContext(items);
                 });
             } else {
                 _id('lists').insertAdjacentHTML('beforeend', `
@@ -379,9 +412,11 @@ function showTask(task) {
         const res = await call_api(`tasks/toggleComplete?id=${task.id}`);
         if (res.status == 'good') {
             _id(id).remove();
-            activeList = res.list;
-            showTask(res.task);
-            changeActiveList(activeList);
+            if (activeList.id != 'schedule') {
+                activeList = res.list;
+                showTask(res.task);
+                changeActiveList(activeList);
+            }
         } else _id(id).style.display = '';
     };
     on(_id(`${id}-radio`), 'click', (e) => {
@@ -597,33 +632,6 @@ function changeActiveList(list, force = false) {
     }, ((isSameList) ? 0 : 200));
 }
 
-function addHueCircles(el, parent) {
-    let hueCircles = [];
-    const hues = [ 0, 25, 50, 110, 160, 200, 240, 280, 320 ];
-    let tmp = [];
-    hues.forEach((hue) => {
-        tmp.push(`
-            <button class="hueCircle changeColours" style="--fgHue: ${hue}" data-hue="${hue}"></button>
-        `);
-        if (tmp.length == 3) {
-            hueCircles.push(`<div class="row gap-10">${tmp.join('')}</div>`);
-            tmp = [];
-        }
-    });
-    if (tmp.length > 0)
-        hueCircles.push(`<div class="row gap-10">${tmp.join('')}</div>`);
-    el.insertAdjacentHTML('beforeend', hueCircles.join(''));
-    [..._class(`hueCircle`)].forEach((el) => {
-        on(el, 'click', () => {
-            [..._class('hueCircle')].forEach((circle) => {
-                circle.classList.remove('selected');
-            });
-            el.classList.add('selected');
-            parent.classList.add('changeColours');
-            parent.style.setProperty('--fgHue', el.dataset.hue);
-        });
-    });
-}
 function createList() {
     const createId = randomHex();
     const hueCircleContId = randomHex();
@@ -926,6 +934,9 @@ async function editTask(task, stayOpen = false) {
     editTaskTransitionTimeout = setTimeout(() => {
         _id('editTaskCont').classList.add('ani');
     }, 0);
+    escapeQueue.push(() => {
+        _id('editTaskClose').click();
+    });
 }
 function hideEditTask() {
     clearTimeout(editTaskTransitionTimeout);
@@ -1102,9 +1113,6 @@ async function init() {
         if (_id('editTaskCont').getBoundingClientRect().x == 0)
             _id('editTaskClose').click();
     });
-    escapeQueue.push(() => {
-        _id('editTaskClose').click();
-    });
     on(_id('editTaskCard'), 'click', (e) => {
         e.stopPropagation();
     });
@@ -1241,7 +1249,7 @@ async function init() {
     // Select the last active list or the top list
     const lastActiveList = localStorageObjGet('activeList');
     if (lists.length > 0)
-        changeActiveList(listsById(lastActiveList.id) || lists[0]);
+        changeActiveList(listsById(lastActiveList.id) || lists[1]);
     // Show the private beta notice
     if (!localStorageObjGet('seenBetaNotice')) {
         showPopup(`Hey`, `
