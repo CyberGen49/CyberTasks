@@ -1036,6 +1036,7 @@ async function init() {
     // Handle showing the schedule list
     on(_id('listSchedule'), 'click', () => {
         changeActiveList(listsById('schedule'));
+        _id('sidebarDimming').click();
     });
     // Handle sorting tasks
     on(_id('sortTasks'), 'click', () => {
