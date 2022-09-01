@@ -204,7 +204,7 @@ async function updateLists(force = false) {
     }
     const listsCombo = [{
         id: 'schedule',
-        hue: 110,
+        hue: 200,
         name: 'Scheduled tasks',
         sort_order: 'due',
         sort_reverse: 0
@@ -234,19 +234,26 @@ async function updateLists(force = false) {
                 });
                 on(_id(elId), 'contextmenu', (e) => {
                     e.preventDefault();
-                    let items = [{
+                    showContext([{
                         type: 'item',
                         name: 'Edit list...',
                         icon: 'edit',
                         action: () => {
                             editList(list);
                         }
-                    }];
-                    if (lists.length > 2) items.push({
+                    }, {
                         type: 'item',
                         name: 'Delete list...',
                         icon: 'delete',
                         action: () => {
+                            if (lists.length < 3) {
+                                showPopup(`Unable to delete list`, `This is your only list! Create another list before deleting this one.`, [{
+                                    label: 'Okay',
+                                    escape: true,
+                                    primary: true
+                                }]);
+                                return;
+                            }
                             showPopup(`Delete list`, `
                                 <p>Are you sure you want to delete <b>${list.name}</b> and <b>all</b> of its associated tasks?</p>
                                 <p style="color: var(--danger)">This action can't be undone!</p>
@@ -265,17 +272,14 @@ async function updateLists(force = false) {
                                 }
                             }]);
                         }
-                    });
-                    items.push({ type: 'sep' });
-                    items.push({
+                    }, { type: 'sep' }, {
                         type: 'item',
                         name: 'Copy list ID',
                         icon: 'code',
                         action: () => {
                             copyText(list.id);
                         }
-                    });
-                    showContext(items);
+                    }]);
                 });
             } else {
                 _id('lists').insertAdjacentHTML('beforeend', `
@@ -488,6 +492,19 @@ function checkListEmpty() {
         if (activeList.id == 'schedule') id = 'tasksEmptySchedule';
         _id(id).style.display = '';
     }
+    // Update the show completed button depending on whether
+    // completed tasks are shown or not
+    if (showCompleted) {
+        _id('showCompletedText').innerText = `Hide completed tasks`;
+        _id('showCompletedArrow').innerText = 'expand_less';
+        _id('tasksComplete').style.display = '';
+    } else {
+        _id('showCompletedText').innerText = `Show ${activeList.count_complete} completed task`;
+        if (activeList.count_complete !== 1)
+            _id('showCompletedText').innerText += 's';
+        _id('showCompletedArrow').innerText = 'expand_more';
+        _id('tasksComplete').style.display = 'none';
+    }
 }
 
 // Change the currently active list
@@ -536,19 +553,6 @@ function changeActiveList(list, force = false) {
         _id('topbarTitle').innerText = list.name;
         _id('listHeaderTitle').innerText = list.name;
         _id('taskSortText').innerText = sortOrderNames[`${list.sort_order}-${list.sort_reverse}`];
-        // Update the show completed button depending on whether
-        // completed tasks are shown or not
-        if (showCompleted) {
-            _id('showCompletedText').innerText = `Hide completed tasks`;
-            _id('showCompletedArrow').innerText = 'expand_less';
-            _id('tasksComplete').style.display = '';
-        } else {
-            _id('showCompletedText').innerText = `Show ${list.count_complete} completed task`;
-            if (list.count_complete !== 1)
-                _id('showCompletedText').innerText += 's';
-            _id('showCompletedArrow').innerText = 'expand_more';
-            _id('tasksComplete').style.display = 'none';
-        }
         // Show/hide some list elements conditionally
         _id('listEdit').style.display = '';
         _id('addTaskCont').style.display = '';

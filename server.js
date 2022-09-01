@@ -301,7 +301,7 @@ const srv = http.createServer((req, res) => {
                 const user = get_active_user();
                 if (!user) return;
                 const id = params.get('id');
-                const entry = db.prepare(`SELECT * FROM tasks WHERE owner = ? AND id = ?`).get(user.id, id)
+                const entry = db.prepare(`SELECT * FROM tasks WHERE owner = ? AND id = ?`).get(user.id, id);
                 if (!is_param_valid(id, entry)) return;
                 const name = postBody.name || entry.name;
                 if (!is_param_valid(name, (name.length > 0 && name.length < 256))) return;
@@ -347,9 +347,12 @@ const srv = http.createServer((req, res) => {
                 const user = get_active_user();
                 if (!user) return;
                 const id = params.get('id');
-                if (!is_param_valid(id, db.prepare(`SELECT id FROM tasks WHERE owner = ? AND id = ?`).get(user.id, id))) return;
+                const entry = db.prepare(`SELECT id, list_id, is_complete FROM tasks WHERE owner = ? AND id = ?`).get(user.id, id);
+                if (!is_param_valid(id, entry)) return;
                 db.prepare('DELETE FROM tasks WHERE owner = ? AND id = ?').run(user.id, id);
-                db.prepare('UPDATE lists SET count_pending = count_pending - 1 WHERE id = ?').run(id);
+                let countCol = 'count_pending';
+                if (parseInt(entry.is_complete)) countCol = 'count_complete';
+                db.prepare(`UPDATE lists SET ${countCol} = ${countCol} - 1 WHERE id = ?`).run(entry.list_id);
                 return end_api(out);
             },
             'tasks/pending': () => {
