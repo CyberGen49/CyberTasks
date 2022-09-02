@@ -341,6 +341,28 @@ function showTask(task) {
     if (existingEl) existingEl.remove();
     if (!showCompleted && task.is_complete) return;
     if (activeList.id == 'schedule' && !task.due_date_time) return;
+    let stats = [];
+    if (task.due_date) {
+        const diff = dueDateDiff(new Date(task.due_date));
+        const dateText = dueDateFormat(new Date(task.due_date));
+        stats.push(`
+            <div class="dueDate row align-center gap-5 no-wrap ${dateText.toLowerCase()} ${(diff > 0) ? 'overdue':''}">
+                <div>Due ${dateText}</div>
+            </div>
+        `);
+    }
+    if (task.steps.length > 0) {
+        let count = { complete: 0, pending: 0 };
+        task.steps.forEach((step) => {
+            if (step.is_complete) count.complete++;
+            else count.pending++;
+        });
+        stats.push(`
+            <div class="steps row align-center gap-5 no-wrap ${(count.complete == task.steps.length) ? 'complete':''}">
+                <div>${count.complete} of ${task.steps.length}</div>
+            </div>
+        `);
+    }
     _id((task.is_complete) ? 'tasksComplete':'tasks').insertAdjacentHTML('beforeend', `
         <button id="${id}" class="task ${(task.is_complete) ? 'complete':''}" data-id="${task.id}" data-due-time="${task.due_date_time}">
             <div id="${id}-radio" class="radio" tabindex="0" title="Mark task as ${(task.is_complete) ? 'in':''}complete"></div>
@@ -348,17 +370,16 @@ function showTask(task) {
                 ${(activeList.id == 'schedule') ? `<div class="desc changeColours" style="--fgHue: ${listsById(task.list_id).hue}; color: var(--f80)">
                     ${listsById(task.list_id).name}
                 </div>`:''}
-                <div id="${id}-name" class="name"></div>
-                ${(task.due_date) ? `<div class="desc dueDate row align-center gap-5 no-wrap ${(dueDateFormat(new Date(task.due_date))).toLowerCase()} ${(dueDateDiff(new Date(task.due_date)) > 0) ? 'overdue':''}">
-                    <div>Due ${dueDateFormat(new Date(task.due_date))}</div>
-                </div>`:''}
-                ${(task.desc) ? `<div id="${id}-desc" class="desc"></div>`:''}
+                <div id="${id}-name" class="name">${escapeHTML(task.name)}</div>
+                ${(stats.length > 0) ? `
+                    <div class="desc stats row gap-10">
+                        ${stats.join('')}
+                    </div>
+                `:''}
+                ${(task.desc) ? `<div id="${id}-desc" class="desc row">${escapeHTML(task.desc)}</div>`:''}
             </div>
         </button>
     `);
-    _id(`${id}-name`).innerText = task.name;
-    if (task.desc)
-        _id(`${id}-desc`).innerText = task.desc;
     on(_id(id), 'click', () => {
         editTask(task);
     });
@@ -909,6 +930,115 @@ function selectDateTime(callback, includeDate = true, includeTime = true, starti
     });
 }
 
+function editTaskCheckStepCount() {
+    _id('addStep').disabled = false;
+    if (activeTask.steps.length >= 32) {
+        _id('addStep').disabled = true;
+    }
+}
+let editTaskStepTimeouts = [];
+function editTaskShowStep(step, focus = false) {
+    const id = randomHex();
+    _id('steps').insertAdjacentHTML('beforeend', `
+        <div id="${id}" class="step row gap-8 align-center no-wrap" data-pos="${step.sort_pos || 0}">
+            <div id="${id}-radio" class="radio no-shrink" title="Mark step as ${(step.is_complete) ? 'in':''}complete"></div>
+            <div id="${id}-input" class="name flex-grow" placeholder="New step..." contenteditable></div>
+            <button id="${id}-delete" class="btn small alt iconOnly noShadow delete no-shrink" title="Delete step">
+                <div class="icon">close</div>
+            </button>
+            <div class="handle no-shrink"></div>
+        </div>
+    `);
+    const el = _id(id);
+    const elInput = _id(`${id}-input`);
+    const elRadio = _id(`${id}-radio`);
+    const elDel = _id(`${id}-delete`);
+    if (step.id) el.dataset.id = step.id;
+    if (step.name) elInput.innerText = step.name;
+    if (step.is_complete) el.classList.add('complete');
+    on(elInput, 'input', () => {
+        clearTimeout(editTaskStepTimeouts[id]);
+        const value = elInput.innerText.replace(/\n/g, '').replace(/\r/g, '').trim();
+        const stepId = el.dataset.id;
+        const task = JSON.parse(JSON.stringify(activeTask));
+        editTaskStepTimeouts[id] = setTimeout(async() => {
+            if (value.length < 1 || value.length > 127) return;
+            let res = {};
+            if (!stepId) {
+                res = await call_api(`tasks/steps/create?task=${task.id}`, {
+                    name: value
+                });
+                if (res.status == 'good') {
+                    el.dataset.id = res.step.id;
+                }
+            } else {
+                res = await call_api(`tasks/steps/edit?id=${stepId}`, {
+                    name: value
+                });
+            }
+            if (res.status == 'good') {
+                showTask(res.task);
+                sortTasks();
+                activeTask = res.task;
+                loop(tasks.length, (i) => {
+                    if (tasks[i].id == activeTask.id)
+                        tasks[i] = activeTask;
+                });
+            }
+        }, 500);
+    });
+    on(elInput, 'keyup', (e) => {
+        if (e.code == 'Enter') _id('addStep').click();
+    });
+    on(elInput, 'blur', () => {
+        const value = elInput.innerText.replace(/\n/g, '').replace(/\r/g, '').trim();
+        if (!el.dataset.id && value.length == 0) {
+            el.remove();
+        } else {
+            elInput.innerText = value;
+        }
+    });
+    on(elDel, 'click', async() => {
+        el.style.display = 'none';
+        const res = await call_api(`tasks/steps/delete?id=${el.dataset.id}`);
+        if (res.status == 'good') {
+            el.remove();
+            showTask(res.task);
+            sortTasks();
+            activeTask = res.task;
+            loop(tasks.length, (i) => {
+                if (tasks[i].id == activeTask.id)
+                    tasks[i] = activeTask;
+            });
+        } else {
+            el.style.display = '';
+        }
+    });
+    const onComplete = async() => {
+        if (el.dataset.id) {
+            el.classList[
+                (el.classList.contains('complete')) ? 'remove':'add'
+            ]('complete');
+        }
+        const res = await call_api(`tasks/steps/toggleComplete?id=${el.dataset.id}`);
+        if (res.status == 'good') {
+            showTask(res.task);
+            sortTasks();
+            activeTask = res.task;
+            loop(tasks.length, (i) => {
+                if (tasks[i].id == activeTask.id)
+                    tasks[i] = activeTask;
+            });
+        }
+    }
+    on(elRadio, 'click', onComplete);
+    on(elRadio, 'keyup', (e) => {
+        if (e.code == 'Space') onComplete();
+    });
+    editTaskCheckStepCount();
+    if (focus) elInput.focus();
+    return _id(id);
+}
 let activeTask = { id: 0 };
 let editTaskTransitionTimeout;
 async function editTask(task, stayOpen = false) {
@@ -933,6 +1063,15 @@ async function editTask(task, stayOpen = false) {
         _id('removeDueDate').style.display = '';
         _id('dueDateText').innerText = dueDateFormat(new Date(task.due_date));
     }
+    _id('steps').innerHTML = '';
+    task.steps.sort((a, b) => {
+        if (a.sort_pos == 0) a.sort_pos = Infinity;
+        if (b.sort_pos == 0) b.sort_pos = Infinity;
+        return a.sort_pos-b.sort_pos;
+    });
+    loopEach(task.steps, (step) => {
+        editTaskShowStep(step);
+    });
     clearTimeout(editTaskTransitionTimeout);
     _id('editTaskCont').classList.add('visible');
     editTaskTransitionTimeout = setTimeout(() => {
@@ -1147,6 +1286,37 @@ async function init() {
     on(_id('editTaskName'), 'paste', () => {
         _id('editTaskName').innerText = _id('editTaskName').innerText.replace(/\n/g, '').replace(/\r/g, '').trim();
     })
+    on(_id('addStep'), 'click', () => {
+        editTaskShowStep({}, true);
+    });
+    Sortable.create(_id('steps'), {
+        handle: '.handle',
+        animation: 200,
+        easing: 'cubic-bezier(0.1, 0.3, 0.3, 1',
+        onChange: () => {
+            navigator.vibrate(2);
+        },
+        onEnd: async() => {
+            let ids = [];
+            [..._id('steps').children].forEach((el) => {
+                const stepId = el.dataset.id;
+                if (stepId && !ids.includes(stepId))
+                    ids.push(stepId);
+            });
+            const res = await call_api(`tasks/steps/sort?task=${activeTask.id}`, {
+                order: ids
+            });
+            if (res.status == 'good') {
+                showTask(res.task);
+                sortTasks();
+                activeTask = res.task;
+                loop(tasks.length, (i) => {
+                    if (tasks[i].id == activeTask.id)
+                        tasks[i] = activeTask;
+                });
+            }
+        }
+    });
     on(_id('setDueDate'), 'click', () => {
         const task = JSON.parse(JSON.stringify(activeTask));
         selectDateTime(async(date) => {
@@ -1228,7 +1398,7 @@ async function init() {
     }, 1000);
     // Fetch lists
     await updateLists();
-    const sortable = Sortable.create(_id('lists'), {
+    Sortable.create(_id('lists'), {
         handle: '.handle',
         animation: 200,
         easing: 'cubic-bezier(0.1, 0.3, 0.3, 1',

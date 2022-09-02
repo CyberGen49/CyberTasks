@@ -369,7 +369,8 @@ body {
 }
 #tasksCont .tasks .task .radio:after,
 #addTaskBox .radio:after,
-#editTaskCard .taskNameCont .radio::after {
+#editTaskCard .taskNameCont .radio::after,
+#editTaskCard #steps .step .radio::after {
     content: 'radio_button_unchecked';
     font-family: 'Material Symbols';
     font-size: 32px;
@@ -377,19 +378,21 @@ body {
 }
 .canHover #tasksCont .tasks .task .radio:hover:after,
 #tasksCont .tasks .task .radio:focus-visible:after,
-#tasksCont .tasks .task .radio:active:after {
+#tasksCont .tasks .task .radio:active:after,
+.canHover #editTaskCard #steps .step .radio:hover::after {
     content: 'check_circle' !important;
     color: var(--f80) !important;
 }
 #tasksCont .tasks .task.complete .radio:after,
-#editTaskCard .taskNameCont .radio.complete::after {
+#editTaskCard .taskNameCont .radio.complete::after,
+#editTaskCard #steps .step.complete .radio::after {
     content: 'check_circle';
     color: var(--f80);
 }
 .canHover #tasksCont .tasks .task.complete .radio:hover:after,
 #tasksCont .tasks .task.complete .radio:focus-visible:after,
-#tasksCont .tasks .task.complete .radio:active:after {
-    content: 'radio_button_unchecked' !important;
+#tasksCont .tasks .task.complete .radio:active:after,
+.canHover #editTaskCard #steps .step.complete .radio:hover::after {
     color: var(--b70) !important;
 }
 #tasksCont .tasks .task .label {
@@ -401,7 +404,8 @@ body {
     overflow: hidden;
     word-break: break-word;
 }
-#tasksCont .tasks .task.complete .label .name {
+#tasksCont .tasks .task.complete .label .name,
+#editTaskCard #steps .step.complete .name:not(:focus) {
     color: var(--b80);
     text-decoration: line-through;
 }
@@ -410,14 +414,25 @@ body {
     color: var(--b70);
     line-height: 1.2;
 }
-#tasksCont .tasks .task .label .desc:not(.dueDate) {
+#tasksCont .tasks .task .label .desc:not(.stats) {
     display: -webkit-box;
     -webkit-line-clamp: 3;
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
-#tasksCont .tasks .task .label .dueDate {
+#tasksCont .tasks .task .label .stats {
     color: var(--b80);
+}
+#tasksCont .tasks .task .label .stats > *::before {
+    margin-top: -2px;
+    font-family: 'Material Symbols';
+    font-size: 20px;
+}
+#tasksCont .tasks .task .label .dueDate:before {
+    content: 'event';
+}
+#tasksCont .tasks .task .label .steps:before {
+    content: 'check_circle';
 }
 #tasksCont .tasks .task .label .dueDate.overdue {
     color: var(--danger);
@@ -428,11 +443,8 @@ body {
 #tasksCont .tasks .task .label .dueDate.today {
     color: var(--f90);
 }
-#tasksCont .tasks .task .label .dueDate:before {
-    margin-top: -2px;
-    font-family: 'Material Symbols';
-    font-size: 20px;
-    content: 'event';
+#tasksCont .tasks .task .label .steps.complete {
+    color: var(--f90);
 }
 
 #addTaskCont {
@@ -514,30 +526,20 @@ body {
         height: 100%;
         background: rgba(0, 0, 0, 0.5);
         z-index: 8;
-        overflow: hidden;
+        scrollbar-width: none;
     }
-    #editTaskCont.visible {
-        display: flex;
-        align-items: flex-end;
-        justify-content: center;
+    #editTaskCont::-webkit-scrollbar {
+        display: none;
     }
     #editTaskCont #editTaskCard {
-        margin: 0px;
+        margin: 0px auto;
         margin-top: 63px;
-        height: calc(100% - 63px);
-        max-width: 500px;
-        flex-grow: 1;
-        flex-shrink: 1;
-        overflow-y: auto;
+        max-width: 600px;
         box-shadow: 0px 6px 15px 5px rgba(0, 0, 0, 0.2);
         border-radius: 20px 20px 0px 0px;
         padding-bottom: 20px;
         transform: translateY(50px);
         scale: 1;
-        scrollbar-width: none;
-    }
-    #editTaskCont #editTaskCard::-webkit-scrollbar {
-        display: none;
     }
     #editTaskCont.ani #editTaskCard {
         box-shadow: 0px 6px 15px 5px rgba(0, 0, 0, 0.2);
@@ -573,12 +575,12 @@ body {
     align-items: center;
     padding-right: 10px;
 }
-#editTaskCard .taskNameCont .radio {
-    font-size: 42px;
-    width: 58px;
+#editTaskCard .taskNameCont .radio::after {
+    font-size: 38px;
 }
 #editTaskCard .taskNameCont .name,
-#editTaskCard .editTaskDescCont .desc {
+#editTaskCard .editTaskDescCont .desc,
+#editTaskCard #steps .step .name {
     padding: 10px 8px 10px 0px;
     line-height: 1.2;
     font-size: 20px;
@@ -596,12 +598,33 @@ body {
     font-size: 16px;
     line-height: 1.3;
 }
+#editTaskCard #steps .step .name {
+    padding: 5px 0px;
+    font-size: 16px;
+    line-height: 1.3;
+}
 #editTaskCard .taskNameCont .name:focus-visible,
+#editTaskCard #steps .step .name:focus-visible,
 #editTaskCard .editTaskDescCont .desc:focus-visible {
     outline: none;
 }
 #editTaskCard .editTaskDescCont .label {
     color: var(--b70);
+}
+#editTaskCard #steps .step .handle,
+#editTaskCard #steps .step .delete {
+    display: none;
+}
+#editTaskCard #steps .step[data-id] .handle,
+#editTaskCard #steps .step[data-id] .delete {
+    display: flex;
+}
+#editTaskCard #steps .step .handle::before {
+    padding: 5px;
+    font-family: 'Material Symbols';
+    font-size: 28px;
+    color: var(--b60);
+    content: 'drag_indicator';
 }
 #editTaskCard #dueDateText {
     font-family: 'Quicksand';

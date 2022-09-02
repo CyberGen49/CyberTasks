@@ -47,10 +47,17 @@ CREATE TABLE IF NOT EXISTS "tasks" (
 	"name"	TEXT NOT NULL,
 	"due_date"	TEXT,
 	"due_date_time"	INTEGER NOT NULL DEFAULT 0,
-	"steps"	TEXT DEFAULT '[]',
 	"desc"	TEXT,
 	"is_complete"	INTEGER NOT NULL DEFAULT 0,
 	"is_repeat"	INTEGER NOT NULL DEFAULT 0,
 	"repeat_unit"	TEXT,
 	"repeat_count"	INTEGER
+);
+CREATE TABLE IF NOT EXISTS "task_steps" (
+	"id"	INTEGER NOT NULL UNIQUE,
+	"task_id"	INTEGER NOT NULL,
+	"owner"	INTEGER NOT NULL,
+	"name"	TEXT NOT NULL,
+	"is_complete"	INTEGER NOT NULL DEFAULT 0,
+	"sort_pos"	INTEGER NOT NULL DEFAULT 0
 );

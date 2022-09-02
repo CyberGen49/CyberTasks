@@ -294,6 +294,7 @@ const srv = http.createServer((req, res) => {
                 db.prepare('INSERT INTO tasks (id, list_id, owner, name) VALUES (?, ?, ?, ?)').run(id, listId, user.id, name);
                 db.prepare('UPDATE lists SET count_pending = count_pending + 1 WHERE id = ?').run(listId);
                 out.task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+                out.task.steps = [];
                 return end_api(out, 201);
             },
             'tasks/edit': () => {
@@ -319,6 +320,7 @@ const srv = http.createServer((req, res) => {
                 if (entry.due_date !== due)
                     db.prepare(`UPDATE tasks SET due_date = ?, due_date_time = ? WHERE id = ?`).run(due, dueTime, id);
                 out.task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+                out.task.steps = db.prepare('SELECT * FROM task_steps WHERE task_id = ?').get(id) || [];
                 out.list = db.prepare('SELECT * FROM lists WHERE id = ?').get(entry.list_id);
                 return end_api(out);
             },
@@ -339,6 +341,7 @@ const srv = http.createServer((req, res) => {
                     db.prepare('UPDATE lists SET count_complete = count_complete - 1 WHERE id = ?').run(entry.list_id);
                 }
                 out.task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+                out.task.steps = db.prepare('SELECT * FROM task_steps WHERE task_id = ?').get(id) || [];
                 out.list = db.prepare('SELECT * FROM lists WHERE id = ?').get(entry.list_id);
                 return end_api(out);
             },
@@ -361,7 +364,10 @@ const srv = http.createServer((req, res) => {
                 if (!user) return;
                 const listId = params.get('list');
                 if (!is_param_valid(listId, db.prepare('SELECT id FROM lists WHERE owner = ? AND id = ?').get(user.id, listId))) return;
-                out.tasks = db.prepare('SELECT * FROM tasks WHERE owner = ? AND list_id = ? AND is_complete = 0').all(user.id, listId) || {};
+                out.tasks = db.prepare('SELECT * FROM tasks WHERE owner = ? AND list_id = ? AND is_complete = 0').all(user.id, listId) || [];
+                for (let i = 0; i < out.tasks.length; i++) {
+                    out.tasks[i].steps = db.prepare('SELECT * FROM task_steps WHERE owner = ? AND task_id = ?').all(user.id, out.tasks[i].id) || [];
+                }
                 return end_api(out);
             },
             'tasks/complete': () => {
@@ -370,7 +376,10 @@ const srv = http.createServer((req, res) => {
                 if (!user) return;
                 const listId = params.get('list');
                 if (!is_param_valid(listId, db.prepare('SELECT id FROM lists WHERE owner = ? AND id = ?').get(user.id, listId))) return;
-                out.tasks = db.prepare('SELECT * FROM tasks WHERE owner = ? AND list_id = ? AND is_complete = 1').all(user.id, listId) || {};
+                out.tasks = db.prepare('SELECT * FROM tasks WHERE owner = ? AND list_id = ? AND is_complete = 1').all(user.id, listId) || [];
+                for (let i = 0; i < out.tasks.length; i++) {
+                    out.tasks[i].steps = db.prepare('SELECT * FROM task_steps WHERE owner = ? AND task_id = ?').all(user.id, out.tasks[i].id) || [];
+                }
                 return end_api(out);
             },
             'tasks/upcoming': () => {
@@ -379,9 +388,84 @@ const srv = http.createServer((req, res) => {
                 if (!user) return;
                 const days = parseInt(params.get('days')) || 7;
                 if (!is_param_valid(days, (days > 0 && days <= 90))) return;
-                out.tasks = db.prepare('SELECT * FROM tasks WHERE owner = ? AND due_date_time > 0 AND due_date_time < ? AND is_complete = 0').all(user.id, (Date.now()+(1000*60*60*24*days))) || {};
+                out.tasks = db.prepare('SELECT * FROM tasks WHERE owner = ? AND due_date_time > 0 AND due_date_time < ? AND is_complete = 0').all(user.id, (Date.now()+(1000*60*60*24*days))) || [];
+                for (let i = 0; i < out.tasks.length; i++) {
+                    out.tasks[i].steps = db.prepare('SELECT * FROM task_steps WHERE owner = ? AND task_id = ?').all(user.id, out.tasks[i].id) || [];
+                }
                 return end_api(out);
-            }
+            },
+            'tasks/steps/create': () => {
+                if (!is_method_valid('POST')) return;
+                const user = get_active_user();
+                if (!user) return;
+                const taskId = params.get('task');
+                const name = postBody.name;
+                if (!is_param_valid(taskId, db.prepare('SELECT id FROM tasks WHERE owner = ? AND id = ?').get(user.id, taskId))) return;
+                if (!is_param_valid(name, (name.length > 0 && name.length < 128))) return;
+                const id = Date.now();
+                db.prepare('INSERT INTO task_steps (id, task_id, owner, name) VALUES (?, ?, ?, ?)').run(id, taskId, user.id, name);
+                out.step = db.prepare('SELECT * FROM task_steps WHERE id = ?').get(id);
+                out.task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId);
+                out.task.steps = db.prepare('SELECT * FROM task_steps WHERE task_id = ?').get(taskId) || [];
+                return end_api(out, 201);
+            },
+            'tasks/steps/edit': () => {
+                if (!is_method_valid('POST')) return;
+                const user = get_active_user();
+                if (!user) return;
+                const id = params.get('id');
+                const name = postBody.name;
+                const entry = db.prepare(`SELECT id, task_id, is_complete FROM task_steps WHERE owner = ? AND id = ?`).get(user.id, id);
+                if (!is_param_valid(id, entry)) return;
+                db.prepare('UPDATE task_steps SET name = ? WHERE id = ?').run(name, id);
+                out.step = db.prepare('SELECT * FROM task_steps WHERE id = ?').get(id);
+                out.task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(entry.task_id);
+                out.task.steps = db.prepare('SELECT * FROM task_steps WHERE task_id = ?').all(entry.task_id) || [];
+                return end_api(out);
+            },
+            'tasks/steps/toggleComplete': () => {
+                if (!is_method_valid('POST')) return;
+                const user = get_active_user();
+                if (!user) return;
+                const id = params.get('id');
+                const entry = db.prepare(`SELECT id, task_id, is_complete FROM task_steps WHERE owner = ? AND id = ?`).get(user.id, id);
+                if (!is_param_valid(id, entry)) return;
+                const newCompletionStatus = (!entry.is_complete) ? 1 : 0;
+                db.prepare('UPDATE task_steps SET is_complete = ? WHERE id = ?').run(newCompletionStatus, id);
+                out.step = db.prepare('SELECT * FROM task_steps WHERE id = ?').get(id);
+                out.task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(entry.task_id);
+                out.task.steps = db.prepare('SELECT * FROM task_steps WHERE task_id = ?').all(entry.task_id) || [];
+                return end_api(out);
+            },
+            'tasks/steps/delete': () => {
+                if (!is_method_valid('POST')) return;
+                const user = get_active_user();
+                if (!user) return;
+                const id = params.get('id');
+                const entry = db.prepare(`SELECT id, task_id, is_complete FROM task_steps WHERE owner = ? AND id = ?`).get(user.id, id);
+                if (!is_param_valid(id, entry)) return;
+                db.prepare('DELETE FROM task_steps WHERE owner = ? AND id = ?').run(user.id, id);
+                out.task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(entry.task_id);
+                out.task.steps = db.prepare('SELECT * FROM task_steps WHERE task_id = ?').all(entry.task_id) || [];
+                return end_api(out);
+            },
+            'tasks/steps/sort': () => {
+                if (!is_method_valid('POST')) return;
+                const user = get_active_user();
+                if (!user) return;
+                const id = params.get('task');
+                const order = postBody.order;
+                if (!is_param_valid(id, db.prepare('SELECT id FROM tasks WHERE owner = ? AND id = ?').get(user.id, id))) return;
+                if (!is_param_valid(order, true)) return;
+                let i = 1;
+                order.forEach((id) => {
+                    db.prepare(`UPDATE task_steps SET sort_pos = ? WHERE id = ? AND owner = ?`).run(i, id, user.id);
+                    i++;
+                });
+                out.task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+                out.task.steps = db.prepare('SELECT * FROM task_steps WHERE task_id = ?').all(id) || [];
+                return end_api(out);
+            },
         }
         // If the requested endpoint exists, handle it
         if (handle_endpoint[endpoint])

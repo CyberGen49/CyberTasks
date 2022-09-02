@@ -49,7 +49,7 @@
                             <div class="icon">logout</div>
                         </button>
                         <div class="flex-grow"></div>
-                        <button id="openSettings" class="btn small iconOnly noShadow" title="Settings" disabled>
+                        <button id="openSettings" class="btn small iconOnly noShadow hidden" title="Settings">
                             <div class="icon">settings</div>
                         </button>
                         <button class="btn small iconOnly noShadow" title="Refresh app" onClick="window.location.reload()">
@@ -143,12 +143,14 @@
                                     <div id="editTaskRadio" class="radio"></div>
                                     <div id="editTaskName" class="name flex-grow" placeholder="Your task needs a name!" tabindex="0" contenteditable></div>
                                 </div>
-                                <div style="padding: 5px 10px 15px 10px">
-                                    <div id="steps" class="col"></div>
-                                    <button class="btn small noShadow" title="This functionality isn't implemented yet!">
-                                        <div class="icon">add</div>
-                                        Add step
-                                    </button>
+                                <div class="col gap-5" style="padding: 0px 10px 15px 10px">
+                                    <div id="steps" class="col gap-3"></div>
+                                    <div class="row">
+                                        <button id="addStep" class="btn small noShadow">
+                                            <div class="icon">add</div>
+                                            Add step
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                             <div class="section row no-wrap align-center">
