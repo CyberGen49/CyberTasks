@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="CyberTasks">
+    <meta property="og:title" content="API Documentation">
+    <meta property="og:description" content="Use the CyberTasks API to interact with your lists and tasks through code.">
+    <meta name="description" content="Use the CyberTasks API to interact with your lists and tasks through code.">
+    <link rel="icon" href="/assets/icon.png">
+    <link rel="stylesheet" href="https://src.simplecyber.org/base.css?v=2">
+    <link rel="stylesheet" href="./docs.css">
+    <title>CyberTasks API Docs</title>
+    <script async defer src="https://src.simplecyber.org/base.js?v=2"></script>
+    <script async defer src="./docs.js"></script>
+</head>
+<body class="changeColours" style="--fgHue: 200;">
+    <div id="main" class="container">
+        <h4 class="text-center" style="margin: 0px;">CyberTasks</h4>
+        <h3 class="text-center" style="margin: 0px; color: var(--f80)">API Documentation</h3>
+        <div style="height: 20px;"></div>
+
+        <div class="col">
+            <div class="spoiler visible">
+                <div class="head">
+                    <h2>What's it about?</h2>
+                </div>
+                <div class="body">
+                    <p>The CyberTasks API works just like any run-of-the-mill REST API, meaning that you can interact with it using the HTTP requesting features of your favourite programming language. Each API endpoint only works with its listed method (be it <code>GET</code>, <code>POST</code>, <code>PUT</code>, etc.), so be sure you're using the correct methods in your code.</p>
+                </div>
+            </div>
+            <div class="spoiler visible">
+                <div class="head">
+                    <h2>Authentication</h2>
+                </div>
+                <div class="body">
+                    <p>Most of the CyberTasks API requires authentication, which can be accomplished by using an API key. The endpoints that require authentication are marked with an <span class="methodTag auth"></span> badge below.</p>
+                    <h4>Creating an API key</h4>
+                    <p>You can create an API key by signing into CyberTasks, then navigating to settings and locating the <b>API keys</b> section. From here, create a new key by clicking the <b>Create key</b> button, or modify the attributes of existing keys.</p>
+                    <p>For security reasons, you'll select a list of scopes for each API key, corresponding to the API endpoints that you want to use. You can see each endpoint's scope below.</p>
+                    <h4>Using your API key to authenticate requests</h4>
+                    <p>Authenticating API requests is accomplished through the use of custom HTTP headers, so set the <code>CyberTasks-Key</code> header to your API key in your requests to authenticate.</p>
+                </div>
+            </div>
+            <div class="spoiler visible">
+                <div class="head">
+                    <h2>Other notes</h2>
+                </div>
+                <div class="body">
+                    <p>All endpoints with methods other than <span class="methodTag get"></span> expect the request body to contain valid JSON with values for that endpoint's <b>JSON body parameters</b>. Additionally, these requests are expected to have a <code>Content-Type</code> of <code>application/json</code>.</p>
+                </div>
+            </div>
+
+            <div id="endpoints" class="col">
+                <h2 style="margin-bottom: 0px">Endpoints</h2>
+            </div>
+    
+            <div id="types" class="col">
+                <h2 style="margin-bottom: 0px">Data types</h2>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

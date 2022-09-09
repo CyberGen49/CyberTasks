@@ -304,7 +304,7 @@ async function updateLists(force = false) {
                         action: () => {
                             showPopup(`Delete category`, `
                                 <p>Are you sure you want to delete this category?</p>
-                                <p>Your lists won't be effected.</p>
+                                <p>Your lists won't be affected.</p>
                             `, [{
                                 label: 'No',
                                 escape: true
@@ -358,7 +358,7 @@ function showTask(task) {
             else count.pending++;
         });
         stats.push(`
-            <div class="steps row align-center gap-5 no-wrap ${(count.complete == task.steps.length) ? 'complete':''}">
+            <div class="steps row align-center gap-5 no-wrap ${(count.complete == task.steps.length) ? 'complete':''}" title="${count.complete} of ${task.steps.length} steps completed">
                 <div>${count.complete} of ${task.steps.length}</div>
             </div>
         `);
@@ -376,7 +376,7 @@ function showTask(task) {
                         ${stats.join('')}
                     </div>
                 `:''}
-                ${(task.desc) ? `<div id="${id}-desc" class="desc row">${escapeHTML(task.desc)}</div>`:''}
+                ${(task.desc) ? `<div id="${id}-desc" class="desc row" title="${escapeHTML(task.desc)}">${escapeHTML(task.desc)}</div>`:''}
             </div>
         </button>
     `);
@@ -421,7 +421,22 @@ function showTask(task) {
             name: 'Move task...',
             icon: 'drive_file_move',
             action: () => {
-                // ...
+                showPopup(`Move task`, `Coming soon™`, [{
+                    label: 'Okay',
+                    primary: true,
+                    escape: true
+                }]);
+            }
+        }, {
+            type: 'item',
+            name: 'Duplicate task',
+            icon: 'content_copy',
+            action: async() => {
+                showPopup(`Duplicate task`, `Coming soon™`, [{
+                    label: 'Okay',
+                    primary: true,
+                    escape: true
+                }]);
             }
         }, { type: 'sep' }, {
             type: 'item',
@@ -537,8 +552,8 @@ let lastSyncHour = '0';
 const sortOrderNames = {
     'created-0': 'Created - Oldest to newest',
     'created-1': 'Created - Newest to oldest',
-    'due-0': 'Due date - Closest to farthest',
-    'due-1': 'Due date - Farthest to closest',
+    'due-0': 'Due date - Closest to furthest',
+    'due-1': 'Due date - furthest to closest',
     'az-0': 'Alphabetically - A-Z',
     'az-1': 'Alphabetically - Z-A'
 }
@@ -827,109 +842,6 @@ function editListFolder(folder) {
     });
 }
 
-/**
- * Prompts the user to select a date and time.
- * @param {function} callback The function to call with the resulting date object, not called if the user doesn't select a date
- * @param {boolean} includeDate If false, the calendar will be hidden
- * @param {boolean} includeTime If false, the clock will be hidden
- * @param {Date} startingDate The date at which to start from
- */
-function selectDateTime(callback, includeDate = true, includeTime = true, startingDate = new Date()) {
-    let title = ['Select'];
-    if (includeDate) title.push('date');
-    if (includeDate && includeTime) title.push('and');
-    if (includeTime) title.push('time');
-    const today = new Date();
-    if (!startingDate || !startingDate.getTime()) startingDate = new Date();
-    let navDate = new Date(startingDate.getTime());
-    let selDate = new Date(startingDate.getTime());
-    let id = {
-        title: randomHex(),
-        days: randomHex(),
-        prev: randomHex(),
-        next: randomHex(),
-    }
-    id.popup = showPopup(title.join(' '), `
-        <div class="col gap-10 dateSelect">
-            <div class="row gap-10 align-center no-wrap">
-                <button id="${id.prev}" class="btn alt2 noShadow iconOnly">
-                    <div class="icon">arrow_back</div>
-                </button>
-                <div id="${id.title}" class="text-center flex-grow monthTitle"></div>
-                <button id="${id.next}" class="btn alt2 noShadow iconOnly">
-                    <div class="icon">arrow_forward</div>
-                </button>
-            </div>
-            <div class="calendar col gap-8 no-wrap">
-                <div class="weekdays">
-                    <span>S</span>
-                    <span>M</span>
-                    <span>T</span>
-                    <span>W</span>
-                    <span>T</span>
-                    <span>F</span>
-                    <span>S</span>
-                </div>
-                <div id="${id.days}" class="days"></div>
-            </div>
-        </div>
-    `, [{
-        label: 'Cancel',
-        escape: true
-    }, {
-        label: 'Select',
-        primary: true,
-        action: () => {
-            callback(selDate);
-        }
-    }]);
-    const changeMonth = () => {
-        const date = new Date(`${dayjs(navDate).format('YYYY-MM')}-01T12:00:00`);
-        _id(id.title).innerText = dayjs(date).format('MMMM YYYY');
-        let timestamp = (date.getTime()-(1000*60*60*24*(date.getDay())));
-        _id(id.days).innerHTML = '';
-        loop(35, (i) => {
-            const dayId = randomHex();
-            const day = new Date(timestamp+(1000*60*60*24*i));
-            _id(id.days).insertAdjacentHTML('beforeend', `
-                <button id="${dayId}" class="btn ${(dayjs(day).format('YYYY-MM-DD') == dayjs(selDate).format('YYYY-MM-DD')) ? '':'alt2'} iconOnly noShadow day ${(day.getMonth() != date.getMonth()) ? 'outside':''}" data-date="${dayjs(day).format('YYYY-MM-DD')}">
-                    ${day.getDate()}
-                </button>
-            `);
-            on(_id(dayId), 'click', () => {
-                loopEach(_qsa(':not(.alt2)', _id(id.days)), (el) => {
-                    el.classList.add('alt2');
-                });
-                _id(dayId).classList.remove('alt2');
-                selDate = day;
-            });
-        });
-    };
-    changeMonth();
-    on(_id(id.prev), 'click', () => {
-        let month = navDate.getMonth();
-        let year = navDate.getFullYear();
-        month--;
-        if (month < 0) {
-            month = 11;
-            year--;
-        }
-        navDate.setFullYear(year, month, 1);
-        changeMonth();
-    });
-    on(_id(id.next), 'click', () => {
-        let month = navDate.getMonth();
-        let year = navDate.getFullYear();
-        month++;
-        if (month > 11) {
-            month = 0;
-            year++;
-        }
-        navDate.setFullYear(year, month, 1);
-        changeMonth();
-    });
-}
-
 function editTaskCheckStepCount() {
     _id('addStep').disabled = false;
     if (activeTask.steps.length >= 32) {
@@ -1144,6 +1056,17 @@ async function init() {
             }
         }]);
     });
+    // Handle install prompt
+    setInterval(() => {
+        _id('installPrompt').style.scale = '0.9';
+        setTimeout(() => {
+            _id('installPrompt').style.scale = '1.2';
+        }, 100);
+        setTimeout(() => {
+            _id('installPrompt').style.scale = '1';
+        }, 300);
+    }, 1000*10);
+    _id('installPrompt').classList.add('hidden');
     // Handle creating lists
     on(_id('createList'), 'click', createList);
     on(_id('createListFolder'), 'click', createListFolder);
@@ -1430,7 +1353,8 @@ async function init() {
             <p>Thanks for trying out CyberTasks!</p>
             <p>Keep in mind that this project is in a private beta stage and you've been granted special access to give it a test drive.</p>
             <p>Part of the reason this project isn't available to the public yet is due to of limited resources. There are no rate limits, but please be mindful of your usage. Don't abuse the platform by creating unnecessary amounts of lists or tasks, or by making excessive API calls. This kind of abuse will result in the revocation of your access.</p>
-            <p>If you run into any bugs, or have features that you'd like to request, direct them to <b>Cyber#1000</b> on Discord.</p>
+            <p>CyberTasks is under active development, so things could change or disappear at any time. Development happens live on this server, so there could also be spans of time where things aren't working properly.</p>
+            <p>If you run into any bugs, or have features that you'd like to request, direct them to <b>@Cyber#1000</b> on Discord.</p>
         `, [{
             label: 'Okay',
             primary: true,

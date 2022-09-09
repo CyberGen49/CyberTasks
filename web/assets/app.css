@@ -287,14 +287,22 @@ body {
     line-height: 1.1;
     user-select: none;
 }
+@media screen and (max-width: 800px) {
+    #listScrollArea {
+        padding: 10px 5px;
+    }
+    #tasksCont .header {
+        padding: 0px 10px;
+    }
+}
 #tasksCont .header #listHeaderTitle {
     font-family: 'Quicksand';
     font-size: 40px;
     font-weight: 600;
     color: var(--f80);
 }
-#tasksCont .header #taskSortText {
-    color: var(--f90);
+#tasksCont .header #sortTasks {
+    margin-left: -5px;
 }
 #tasksCont .tasks {
     flex-grow: 1;
@@ -497,6 +505,15 @@ body {
     overflow-y: auto;
     overflow-x: hidden;
 }
+@media screen and (min-width: 1350px) {
+    #sidebar {
+        width: 350px;
+    }
+    #editTaskCont {
+        max-width: 430px;
+        width: 430px;
+    }
+}
 #editTaskCont.visible {
     display: block;
 }
@@ -524,26 +541,23 @@ body {
         width: 100%;
         max-width: 100%;
         height: 100%;
+        padding: 10px;
         background: rgba(0, 0, 0, 0.5);
         z-index: 8;
         scrollbar-width: none;
+    }
+    #editTaskCont.visible {
+        display: flex;
     }
     #editTaskCont::-webkit-scrollbar {
         display: none;
     }
     #editTaskCont #editTaskCard {
-        margin: 0px auto;
-        margin-top: 63px;
-        max-width: 600px;
+        margin: auto;
+        max-width: 100%;
+        width: 100%;
         box-shadow: 0px 6px 15px 5px rgba(0, 0, 0, 0.2);
-        border-radius: 20px 20px 0px 0px;
-        padding-bottom: 20px;
-        transform: translateY(50px);
-        scale: 1;
-    }
-    #editTaskCont.ani #editTaskCard {
-        box-shadow: 0px 6px 15px 5px rgba(0, 0, 0, 0.2);
-        transform: none;
+        border-radius: 20px;
     }
 }
 #editTaskCard .topbar {
@@ -631,38 +645,6 @@ body {
     font-size: 20px;
     font-weight: 600;
     color: var(--f90);
-}
-
-.dateSelect {
-    user-select: none;
-}
-.dateSelect .monthTitle {
-    font-family: 'Quicksand';
-    font-weight: bold;
-    font-size: 20px;
-    color: var(--f85);
-}
-.dateSelect .calendar .weekdays span {
-    font-family: 'Quicksand';
-    font-weight: bold;
-    font-size: 18px;
-    text-align: center;
-    color: var(--f90);
-}
-.dateSelect .calendar .weekdays,
-.dateSelect .calendar .days {
-    display: grid;
-    grid-template-columns: repeat(7, 40px);
-}
-.dateSelect .calendar .days .day {
-    font-size: 18px;
-    font-weight: 600;
-}
-.dateSelect .calendar .days .day.alt2 {
-    color: var(--b100);
-}
-.dateSelect .calendar .days .day.alt2.outside {
-    color: var(--b65);
 }
 
 .hueCircle {

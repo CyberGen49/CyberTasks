@@ -78,7 +78,9 @@ const srv = http.createServer((req, res) => {
     // End the response with a file stream
     const end_file = (filePath) => {
         if (fs.existsSync(filePath)) {
-            if (!fs.statSync(filePath).isDirectory()) {
+            if (fs.statSync(filePath).isDirectory())
+                filePath = path.join(filePath, 'index.html');
+            if (fs.existsSync(filePath)) {
                 res.setHeader('Content-Type', mime.getType(filePath));
                 const stream = fs.createReadStream(filePath);
                 stream.pipe(res);
@@ -540,6 +542,8 @@ const srv = http.createServer((req, res) => {
     try {
         switch (reqPathSplit[0]) {
             case 'assets':
+                return end_file(path.join('./web/', reqPath));
+            case 'docs':
                 return end_file(path.join('./web/', reqPath));
             case 'worker.js':
                 return end_file('./web/worker.js');

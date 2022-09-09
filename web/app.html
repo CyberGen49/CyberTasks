@@ -52,6 +52,9 @@
                         <button id="openSettings" class="btn small iconOnly noShadow hidden" title="Settings">
                             <div class="icon">settings</div>
                         </button>
+                        <button id="installPrompt" class="btn small iconOnly noShadow  changeColours" style="--fgHue: 50;" title="Install">
+                            <div class="icon">install_desktop</div>
+                        </button>
                         <button class="btn small iconOnly noShadow" title="Refresh app" onClick="window.location.reload()">
                             <div class="icon">refresh</div>
                         </button>
@@ -94,10 +97,10 @@
                             <div class="header col gap-5">
                                 <div id="listHeaderTitle"></div>
                                 <div class="row gap-10 align-center">
-                                    <button id="sortTasks" class="btn alt2 iconOnly" title="Sort tasks...">
+                                    <button id="sortTasks" class="btn alt2" title="Sort tasks...">
                                         <div class="icon">sort</div>
+                                        <span id="taskSortText">Sorted manually</span>
                                     </button>
-                                    <span id="taskSortText">Sorted manually</span>
                                 </div>
                             </div>
                             <div id="tasksEmpty" class="empty col gap-8 align-center">
@@ -161,7 +164,7 @@
                                     <span>Set due date</span>
                                     <div id="dueDateText"></div>
                                 </div>
-                                <button id="removeDueDate" class="btn alt iconOnly noShadow" title="Clear due date">
+                                <button id="removeDueDate" class="btn alt iconOnly noShadow" title="Remove due date">
                                     <div class="icon">close</div>
                                 </button>
                             </div>
