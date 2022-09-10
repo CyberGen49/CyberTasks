@@ -4,32 +4,26 @@
 }
 .spoiler .head h3 {
     font-size: 24px;
-    color: var(--f90);
-}
-
-code:not(pre code) {
-    font-family: 'Cascadia Code';
-    font-size: 16px;
-    padding: 3px 6px;
-    background: var(--b12);
-    border-radius: 8px;
+    color: var(--f85);
 }
 
 .methodTag {
+    display: inline;
     font-family: 'Quicksand';
     font-weight: bold;
-    padding: 4px 8px;
+    padding: 3px 8px;
+    margin-top: -4px;
     background: var(--b12);
     border-radius: 100px;
     box-shadow: 0px 2px 3px 0px rgba(0, 0, 0, 0.3);
 }
-.methodTag.get { background: rgb(16, 92, 143) }
+.methodTag.get { background: hsl(200, 50%, 40%) }
 .methodTag.get::before { content: 'GET' }
-.methodTag.post { background: rgb(31, 143, 16) }
+.methodTag.post { background: hsl(120, 50%, 40%) }
 .methodTag.post::before { content: 'POST' }
-.methodTag.put { background: rgb(130, 143, 16) }
+.methodTag.put { background: hsl(60, 50%, 40%) }
 .methodTag.put::before { content: 'PUT' }
-.methodTag.delete { background: rgb(143, 16, 16) }
+.methodTag.delete { background: hsl(330, 50%, 40%) }
 .methodTag.delete::before { content: 'DELETE' }
 .methodTag.auth {
     background: var(--b15);

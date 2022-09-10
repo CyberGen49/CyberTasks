@@ -26,11 +26,11 @@ window.addEventListener('load', async() => {
     if (auth.token) {
         // Check its validity with the server
         const res = await (await fetch('/api/me', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ token: auth.token })
+            headers: {
+                'CyberTasks-Token': auth.token
+            },
         })).json();
-        if (res.status == 'good') {
+        if (res.success) {
             user = res.user;
             token = auth.token;
             localStorageObjSet('user', user);
@@ -137,18 +137,22 @@ function addHueCircles(el, parent) {
 // Make a call to the API using the active user's access token
 // Returns the response as decoded JSON
 let callApiPopupTimeout;
-async function call_api(endpoint, data = {}, method = 'POST') {
-    Object.assign(data, { token: token });
+async function call_api(endpoint, data = false, method = 'POST') {
     clearTimeout(callApiPopupTimeout);
     let popupId = false;
     callApiPopupTimeout = setTimeout(() => {
-        popupId = showPopup(`Hang tight`, `Your request to the server is taking longer than expected...`);
+        popupId = showPopup(`Hang tight`, `Your request is taking longer than expected...`);
     }, 1000);
-    const res = await fetch(`/api/${endpoint}`, {
-        method: method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(data)
-    }).catch((e) => {
+    let opts = {
+        headers: { 'CyberTasks-Token': token }
+    };
+    if (data || method !== 'POST')
+        opts.method = method;
+    if (data) {
+        opts.headers['Content-Type'] = 'application/json';
+        opts.body = JSON.stringify(data);
+    }
+    const res = await fetch(`/api/${endpoint}`, opts).catch((e) => {
         showPopup(`Request failed`, `A connection with the server couldn't be established. Make sure you're connected to the internet, then try again.`, [{
             label: 'Refresh app',
             action: window.location.reload
@@ -169,7 +173,6 @@ async function call_api(endpoint, data = {}, method = 'POST') {
             action: window.location.reload
         }, {
             label: 'Okay',
-            escape: true,
             primary: true
         }]);
         console.log(`Failed API response`, json, res);
@@ -264,8 +267,8 @@ async function updateLists(force = false) {
                                 label: 'Yes',
                                 primary: true,
                                 action: async() => {
-                                    const res = await call_api(`lists/delete?id=${list.id}`);
-                                    if (res.status == 'good') {
+                                    const res = await call_api(`lists/${list.id}/delete`, false, 'DELETE');
+                                    if (res.success) {
                                         await updateLists();
                                         changeActiveList(lists[1]);
                                     }
@@ -312,8 +315,8 @@ async function updateLists(force = false) {
                                 label: 'Yes',
                                 primary: true,
                                 action: async() => {
-                                    const res = await call_api(`lists/deleteFolder?id=${list.id}`);
-                                    if (res.status == 'good') {
+                                    const res = await call_api(`lists/folders/${list.id}/delete`, false, 'delete');
+                                    if (res.success) {
                                         updateLists();
                                     }
                                 }
@@ -408,8 +411,8 @@ function showTask(task) {
                     primary: true,
                     action: async() => {
                         _id(id).style.display = 'none';
-                        const res = await call_api(`tasks/delete?id=${task.id}`);
-                        if (res.status == 'good') {
+                        const res = await call_api(`tasks/${task.id}/delete`, false, 'delete');
+                        if (res.success) {
                             _id(id).remove();
                             if (activeTask.id == task.id) hideEditTask();
                         } else _id(id).style.display = '';
@@ -449,8 +452,8 @@ function showTask(task) {
     });
     const onComplete = async() => {
         _id(id).style.display = 'none';
-        const res = await call_api(`tasks/toggleComplete?id=${task.id}`);
-        if (res.status == 'good') {
+        const res = await call_api(`tasks/${task.id}/toggleComplete`, false, 'put');
+        if (res.success) {
             _id(id).remove();
             if (activeList.id != 'schedule') {
                 activeList = res.list;
@@ -611,10 +614,10 @@ function changeActiveList(list, force = false) {
         }
         // Fetch and store pending tasks
         let resTasks = [];
-        let mainUrl = `tasks/pending?list=${list.id}`;
+        let mainUrl = `lists/${list.id}/tasks/pending`;
         if (list.id == 'schedule') mainUrl = `tasks/upcoming?days=14`;
         const res = await call_api(mainUrl);
-        if (!res.status == 'good') {
+        if (!res.success) {
             _id('tasks').innerHTML = `
                 <div class="col gap-8 align-center">
                     <span style="color: var(--danger)">Failed to load tasks</span>
@@ -630,8 +633,8 @@ function changeActiveList(list, force = false) {
         // If completed tasks are shown, fetch those and combine them with
         // the pending tasks
         if (showCompleted && list.id != 'schedule') {
-            const res = await call_api(`tasks/complete?list=${list.id}`);
-            if (!res.status == 'good') {
+            const res = await call_api(`lists/${list.id}/tasks/complete`);
+            if (!res.success) {
                 _id('tasksComplete').innerHTML = `
                     <div class="col gap-8 align-center">
                         <span style="color: var(--danger)">Failed to load completed tasks</span>
@@ -730,10 +733,10 @@ function createListFolder() {
         disabled: true,
         id: createId,
         action: async() => {
-            const res = await call_api('lists/createFolder', {
+            const res = await call_api('lists/folders/create', {
                 name: _id('newFolderName').value
             });
-            if (res.status == 'good')
+            if (res.success)
                 updateLists();
         }
     }]);
@@ -770,10 +773,10 @@ function editList(list) {
         disabled: true,
         id: doneId,
         action: async() => {
-            const res = await call_api(`lists/edit?id=${list.id}`, {
+            const res = await call_api(`lists/${list.id}/edit`, {
                 name: _id('listName').value,
                 hue: parseInt(_qs(`.hueCircle.selected`).dataset.hue)
-            });
+            }, 'put');
             if (res) {
                 await updateLists();
                 if (res.list.id == activeList.id) {
@@ -821,10 +824,10 @@ function editListFolder(folder) {
         disabled: true,
         id: createId,
         action: async() => {
-            const res = await call_api(`lists/editFolder?id=${folder.id}`, {
+            const res = await call_api(`lists/folders/${folder.id}/edit`, {
                 name: _id('newFolderName').value
-            });
-            if (res.status == 'good')
+            }, 'put');
+            if (res.success)
                 updateLists();
         }
     }]);
@@ -877,18 +880,18 @@ function editTaskShowStep(step, focus = false) {
             if (value.length < 1 || value.length > 127) return;
             let res = {};
             if (!stepId) {
-                res = await call_api(`tasks/steps/create?task=${task.id}`, {
+                res = await call_api(`tasks/${task.id}/steps/create`, {
                     name: value
                 });
-                if (res.status == 'good') {
+                if (res.success) {
                     el.dataset.id = res.step.id;
                 }
             } else {
-                res = await call_api(`tasks/steps/edit?id=${stepId}`, {
+                res = await call_api(`steps/${stepId}/edit`, {
                     name: value
-                });
+                }, 'put');
             }
-            if (res.status == 'good') {
+            if (res.success) {
                 showTask(res.task);
                 sortTasks();
                 activeTask = res.task;
@@ -912,8 +915,8 @@ function editTaskShowStep(step, focus = false) {
     });
     on(elDel, 'click', async() => {
         el.style.display = 'none';
-        const res = await call_api(`tasks/steps/delete?id=${el.dataset.id}`);
-        if (res.status == 'good') {
+        const res = await call_api(`steps/${el.dataset.id}/delete`, false, 'delete');
+        if (res.success) {
             el.remove();
             showTask(res.task);
             sortTasks();
@@ -932,8 +935,8 @@ function editTaskShowStep(step, focus = false) {
                 (el.classList.contains('complete')) ? 'remove':'add'
             ]('complete');
         }
-        const res = await call_api(`tasks/steps/toggleComplete?id=${el.dataset.id}`);
-        if (res.status == 'good') {
+        const res = await call_api(`steps/${el.dataset.id}/toggleComplete`, false, 'put');
+        if (res.success) {
             showTask(res.task);
             sortTasks();
             activeTask = res.task;
@@ -1125,8 +1128,8 @@ async function init() {
                 type: 'item',
                 name: name,
                 action: async() => {
-                    const res = await call_api(`lists/sortTasks?id=${activeList.id}&order=${keySplit[0]}&reverse=${(parseInt(keySplit[1])) ? 'true':'false'}`);
-                    if (res.status === 'good') {
+                    const res = await call_api(`lists/${activeList.id}/sort?order=${keySplit[0]}&reverse=${(parseInt(keySplit[1])) ? 'true':'false'}`, false, 'put');
+                    if (res.success) {
                         updateLists();
                         activeList.sort_order = keySplit[0];
                         activeList.sort_reverse = parseInt(keySplit[1]);
@@ -1155,10 +1158,10 @@ async function init() {
         const value = _id('inputNewTaskName').innerText;
         _id('addTask').disabled = true;
         _id('inputNewTaskName').innerText = '';
-        const res = await call_api(`tasks/create?list=${activeList.id}`, {
+        const res = await call_api(`lists/${activeList.id}/tasks/create`, {
             name: value
         });
-        if (res.status == 'good') {
+        if (res.success) {
             showTask(res.task);
             sortTasks();
             tasks.push(res.task);
@@ -1192,10 +1195,10 @@ async function init() {
         const value = _id('editTaskName').innerText.replace(/\n/g, '').replace(/\r/g, '').trim();
         if (value.length < 1 || value.length > 255) return;
         taskNameEditTimeout = setTimeout(async() => {
-            const res = await call_api(`tasks/edit?id=${task.id}`, {
+            const res = await call_api(`tasks/${task.id}/edit`, {
                 name: value
-            });
-            if (res.status == 'good') {
+            }, 'put');
+            if (res.success) {
                 showTask(res.task);
                 sortTasks();
                 activeTask = res.task;
@@ -1226,10 +1229,10 @@ async function init() {
                 if (stepId && !ids.includes(stepId))
                     ids.push(stepId);
             });
-            const res = await call_api(`tasks/steps/sort?task=${activeTask.id}`, {
+            const res = await call_api(`tasks/${activeTask.id}/steps/sort`, {
                 order: ids
-            });
-            if (res.status == 'good') {
+            }, 'put');
+            if (res.success) {
                 showTask(res.task);
                 sortTasks();
                 activeTask = res.task;
@@ -1244,10 +1247,10 @@ async function init() {
         const task = JSON.parse(JSON.stringify(activeTask));
         selectDateTime(async(date) => {
             date = dayjs(date).format('YYYY-M-D');
-            const res = await call_api(`tasks/edit?id=${task.id}`, {
+            const res = await call_api(`tasks/${task.id}/edit`, {
                 due_date: date
-            });
-            if (res.status == 'good') {
+            }, 'put');
+            if (res.success) {
                 activeTask = res.task;
                 showTask(activeTask);
                 sortTasks();
@@ -1261,10 +1264,10 @@ async function init() {
     });
     on(_id('removeDueDate'), 'click', async() => {
         const task = JSON.parse(JSON.stringify(activeTask));
-        const res = await call_api(`tasks/edit?id=${task.id}`, {
+        const res = await call_api(`tasks/${task.id}/edit`, {
             due_date: 'null'
-        });
-        if (res.status == 'good') {
+        }, 'put');
+        if (res.success) {
             activeTask = res.task;
             showTask(activeTask);
             sortTasks();
@@ -1283,10 +1286,10 @@ async function init() {
         if (value.length == 0) _id('editTaskDesc').innerText = '';
         if (value.length > 2047) return;
         taskDescEditTimeout = setTimeout(async() => {
-            const res = await call_api(`tasks/edit?id=${task.id}`, {
+            const res = await call_api(`tasks/${task.id}/edit`, {
                 desc: value
-            });
-            if (res.status == 'good') {
+            }, 'put');
+            if (res.success) {
                 showTask(res.task);
                 sortTasks();
                 activeTask = res.task;
@@ -1307,7 +1310,7 @@ async function init() {
         update: () => { localStorageObjSet('lastRefresh', { time: Date.now() }) }
     }
     const refresh = async() => {
-        if (user.id) {
+        if (user.id && activeList) {
             lastRefresh.update();
             await updateLists();
             changeActiveList(listsById(activeList.id), true);
@@ -1340,7 +1343,7 @@ async function init() {
             });
             const res = await call_api('lists/sort', {
                 order: ids
-            });
+            }, 'put');
         }
     });
     // Select the last active list or the top list
