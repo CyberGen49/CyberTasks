@@ -61,6 +61,10 @@
                     <p>For security reasons, you'll select a list of scopes for each API key, corresponding to the API endpoints that you want to use. You can see each endpoint's scope below.</p>
                     <h4>Using your API key to authenticate requests</h4>
                     <p>Authenticating API requests is accomplished through the use of custom HTTP headers. Set the <code>CyberTasks-Key</code> header of your request to your API key to authenticate.</p>
+                    <h4>Authenticating with a user access token (not recommended)</h4>
+                    <p>It's also possible to gain unrestricted access to the API (including undocumented endpoints) by using a user access token for authentication. This token can be acquired by right-clicking or long-pressing on your profile picture within CyberTasks, and choosing the <b>Copy access token...</b> option.</p>
+                    <p>Note that these tokens are login-specific, are deleted when you log out, and expire if left unused for 30 days. They're also able to perform potentially dangerous actions like deleting your account, so use a normal API key if at all possible.</p>
+                    <p>To authenticate with a user token, use the same custom header method as above, but with the <code>CyberTasks-Token</code> header instead.</p>
                 </div>
             </div>
             <div class="spoiler visible">

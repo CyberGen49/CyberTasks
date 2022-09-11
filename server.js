@@ -141,7 +141,7 @@ srv.delete('/api/me/keys/delete', get_active_user, (req, res) => {
 srv.get('/api/me/sessions', get_active_user, (req, res) => {
     return res.json_end_error('notImplemented', `This endpoint isn't implemented yet!`, 501);
 });
-srv.get('/api/me/sessions/end', get_active_user, (req, res) => {
+srv.delete('/api/me/sessions/end', get_active_user, (req, res) => {
     res.db.prepare('DELETE FROM auth WHERE token = ? AND owner = ?').run(req.token, req.user.id);
     return res.json_end();
 });
@@ -249,7 +249,7 @@ srv.get('/api/lists/:id/tasks/complete', get_active_user, (req, res) => {
     }
     return res.json_end();
 });
-srv.post('/api/lists/:id/users', get_active_user, (req, res) => {
+srv.get('/api/lists/:id/users', get_active_user, (req, res) => {
     return res.json_end_error('notImplemented', `This endpoint isn't implemented yet!`, 501);
 });
 srv.post('/api/lists/:id/users/add', get_active_user, (req, res) => {
