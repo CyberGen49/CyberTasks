@@ -364,6 +364,7 @@ function showTask(task) {
         const dateText = dueDateFormat(new Date(task.due_date));
         stats.push(`
             <div class="dueDate row align-center gap-5 no-wrap ${dateText.toLowerCase()} ${(diff > 0) ? 'overdue':''}">
+                <div class="icon">event</div>
                 <div>Due ${dateText}</div>
             </div>
         `);
@@ -376,6 +377,7 @@ function showTask(task) {
         });
         stats.push(`
             <div class="steps row align-center gap-5 no-wrap ${(count.complete == task.steps.length) ? 'complete':''}" title="${count.complete} of ${task.steps.length} steps completed">
+                <div class="icon">check_circle</div>
                 <div>${count.complete} of ${task.steps.length}</div>
             </div>
         `);
@@ -402,7 +404,7 @@ function showTask(task) {
     });
     on(_id(id), 'contextmenu', (e) => {
         e.preventDefault();
-        showContext([{
+        const data = [{
             type: 'item',
             name: 'Edit task...',
             icon: 'edit',
@@ -462,7 +464,10 @@ function showTask(task) {
             action: () => {
                 copyText(task.id);
             }
-        }]);
+        }];
+        console.log(e)
+        if (e.detail.aux) data.shift();
+        showContext(data);
     });
     const onComplete = async() => {
         _id(id).style.display = 'none';
@@ -1001,6 +1006,11 @@ async function editTask(task, stayOpen = false) {
     loopEach(task.steps, (step) => {
         editTaskShowStep(step);
     });
+    _id('editTaskMenu').onclick = () => {
+        _qs(`.task[data-id="${task.id}"]`).dispatchEvent(new CustomEvent('contextmenu', {
+            detail: { aux: true }
+        }));
+    };
     clearTimeout(editTaskTransitionTimeout);
     _id('editTaskCont').classList.add('visible');
     editTaskTransitionTimeout = setTimeout(() => {
@@ -1072,6 +1082,12 @@ async function init() {
                 window.location.reload();
             }
         }]);
+    });
+    // Handle refresh button
+    on(_id('refresh'), 'click', async() => {
+        showPopup('Refreshing', `Clearing app cache, hang tight...`);
+        await caches.delete('assets');
+        window.location.reload();
     });
     // Handle install prompt
     setInterval(() => {
@@ -1183,7 +1199,8 @@ async function init() {
     });
     // Handle the edit list button
     on(_id('listEdit'), 'click', () => {
-        editList(activeList);
+        //editList(activeList);
+        _qs(`.listEntry[data-id="${activeList.id}"]`).dispatchEvent(new Event('contextmenu'));
     });
     // Handle showing/hiding completed tasks
     on(_id('showCompleted'), 'click', () => {
@@ -1260,7 +1277,7 @@ async function init() {
     on(_id('setDueDate'), 'click', () => {
         const task = JSON.parse(JSON.stringify(activeTask));
         selectDateTime(async(date) => {
-            date = dayjs(date).format('YYYY-M-D');
+            date = dayjs(date).format('YYYY-MM-DDT00:00:00');
             const res = await api.put(`tasks/${task.id}/edit`, {
                 due_date: date
             });

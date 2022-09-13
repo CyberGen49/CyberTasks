@@ -55,7 +55,7 @@
                         <button id="installPrompt" class="btn small iconOnly noShadow  changeColours" style="--fgHue: 50;" title="Install">
                             <div class="icon">install_desktop</div>
                         </button>
-                        <button class="btn small iconOnly noShadow" title="Refresh app" onClick="window.location.reload()">
+                        <button id="refresh" class="btn small iconOnly noShadow" title="Refresh app">
                             <div class="icon">refresh</div>
                         </button>
                     </div>
@@ -136,10 +136,13 @@
                     <div id="editTaskCont" class="no-shrink">
                         <div id="editTaskCard" class="col">
                             <div class="topbar row align-center gap-10 no-wrap">
-                                <div id="editTaskClose" class="btn alt2 iconOnly noShadow" title="Close task editor">
+                                <button id="editTaskClose" class="btn alt2 iconOnly noShadow" title="Close task editor">
                                     <div class="icon">close</div>
+                                </button>
+                                <div class="title flex-grow">Edit task</div>
+                                <div id="editTaskMenu" class="btn alt2 iconOnly noShadow" title="Task options...">
+                                    <div class="icon">more_vert</div>
                                 </div>
-                                <div class="title">Edit task</div>
                             </div>
                             <div class="section" style="padding: 0px;">
                                 <div class="taskNameCont">

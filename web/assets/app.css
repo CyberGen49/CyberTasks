@@ -431,27 +431,21 @@ body {
 #tasksCont .tasks .task .label .stats {
     color: var(--b80);
 }
-#tasksCont .tasks .task .label .stats > *::before {
+#tasksCont .tasks .task .label .stats > * .icon {
     margin-top: -2px;
     font-family: 'Material Symbols';
     font-size: 20px;
 }
-#tasksCont .tasks .task .label .dueDate:before {
-    content: 'event';
-}
-#tasksCont .tasks .task .label .steps:before {
-    content: 'check_circle';
-}
-#tasksCont .tasks .task .label .dueDate.overdue {
+#tasksCont .tasks .task .label .stats .dueDate.overdue {
     color: var(--danger);
 }
-#tasksCont .tasks .task .label .dueDate.overdue {
+#tasksCont .tasks .task .label .stats .dueDate.overdue {
     color: var(--danger);
 }
-#tasksCont .tasks .task .label .dueDate.today {
+#tasksCont .tasks .task .label .stats .dueDate.today {
     color: var(--f90);
 }
-#tasksCont .tasks .task .label .steps.complete {
+#tasksCont .tasks .task .label .stats .steps.complete {
     color: var(--f90);
 }
 
