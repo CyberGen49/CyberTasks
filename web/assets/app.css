@@ -436,13 +436,13 @@ body {
     font-family: 'Material Symbols';
     font-size: 20px;
 }
-#tasksCont .tasks .task .label .stats .dueDate.overdue {
+#tasksCont .tasks .task:not(.complete) .label .stats .dueDate.overdue {
     color: var(--danger);
 }
-#tasksCont .tasks .task .label .stats .dueDate.overdue {
+#tasksCont .tasks .task:not(.complete) .label .stats .dueDate.overdue {
     color: var(--danger);
 }
-#tasksCont .tasks .task .label .stats .dueDate.today {
+#tasksCont .tasks .task:not(.complete) .label .stats .dueDate.today {
     color: var(--f90);
 }
 #tasksCont .tasks .task .label .stats .steps.complete {

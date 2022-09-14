@@ -44,6 +44,7 @@ lists.forEach((list) => {
 db.close();
 
 const srv = express();
+srv.disable('etag');
 srv.use(bodyParser.json({ type: 'application/json' }));
 srv.use(express.static('web', {
     index: 'app.html'
@@ -77,7 +78,7 @@ srv.use((req, res, next) => {
 srv.use('/api/*', (req, res, next) => {
     // Open the database
     res.db = sqlite3('main.db');
-    // Set default scope
+    // Set default scope (checked against API keys)
     res.scope = '';
     // Define extra functions
     res.json_end = (status = 200) => {
