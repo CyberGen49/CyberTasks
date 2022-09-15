@@ -439,9 +439,6 @@ body {
 #tasksCont .tasks .task:not(.complete) .label .stats .dueDate.overdue {
     color: var(--danger);
 }
-#tasksCont .tasks .task:not(.complete) .label .stats .dueDate.overdue {
-    color: var(--danger);
-}
 #tasksCont .tasks .task:not(.complete) .label .stats .dueDate.today {
     color: var(--f90);
 }
