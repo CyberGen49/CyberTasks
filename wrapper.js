@@ -19,11 +19,12 @@ const bot = new Discord.Client({ intents: [
     Discord.GatewayIntentBits.GuildMessages,
     Discord.GatewayIntentBits.MessageContent
 ] });
+let channel = false;
 let logBuffer = [];
 let lastMsg = false;
 bot.once('ready', () => {
     console.log(`Discord bot is ready!`);
-    const channel = bot.channels.cache.get(credentials.log_channel);
+    channel = bot.channels.cache.get(credentials.log_channel);
     channel.send(`Wrapper started`);
     setInterval(async() => {
         if (logBuffer.length > 0) {
@@ -66,6 +67,7 @@ const start = () => {
             const output = data.toString();
             process.stdout.write(output);
             logBuffer.push(output.replace(ansiRegex(), ''));
+            if (channel) channel.sendTyping();
         });
     });
     srv.on('spawn', () => {

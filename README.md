@@ -45,4 +45,4 @@ While the intention isn't for others to be hosting copies of CyberTasks, hosting
     ```
 1. Start the server with `npm start`
 
-The server is hosted on a nonstandard port, as it's meant to be proxied through a virtual host on a parent webserver like Apache.
+The server is hosted on a nonstandard port, as it's meant to be proxied through a virtual host on a parent webserver like Apache or using a service like [Cloudflare Tunnel](https://www.cloudflare.com/products/tunnel/).
