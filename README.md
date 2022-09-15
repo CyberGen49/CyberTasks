@@ -44,5 +44,6 @@ While the intention isn't for others to be hosting copies of CyberTasks, hosting
     sqlite3 main.db ".read database-schema.sql"
     ```
 1. Start the server with `npm start`
+    1. Alternatively, run `node wrapper.js` to make sure the server restarts if it crashes. The wrapper is also capable of sending logs to a Discord channel using a bot. To enable this functionality, create a bot account on your Discord application, copy its token, and set it to `bot_token` in `credentials.json`, then set `log_channel` to the ID of the text channel that you want logs to be sent in. Make sure the bot has the **Message content intent** enabled, and join it to your server by selecting **bot** under **OAuth2 > URL Generator**.
 
 The server is hosted on a nonstandard port, as it's meant to be proxied through a virtual host on a parent webserver like Apache or using a service like [Cloudflare Tunnel](https://www.cloudflare.com/products/tunnel/).
