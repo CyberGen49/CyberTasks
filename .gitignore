@@ -1,5 +1,6 @@
 credentials.json
 allowedUsers.json
 devConfig.json
+commitMerge.sh
 *.db
 *.db-*
