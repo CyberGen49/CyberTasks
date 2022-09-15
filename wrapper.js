@@ -20,19 +20,28 @@ const bot = new Discord.Client({ intents: [
     Discord.GatewayIntentBits.MessageContent
 ] });
 let logBuffer = [];
+let lastMsg = false;
 bot.once('ready', () => {
     console.log(`Discord bot is ready!`);
     const channel = bot.channels.cache.get(credentials.log_channel);
     channel.send(`Wrapper started`);
-    setInterval(() => {
+    setInterval(async() => {
         if (logBuffer.length > 0) {
             const str = logBuffer.join('');
             logBuffer = [];
-            channel.send(`
-                \`\`\`${str}\`\`\`
-            `);
+            if (!lastMsg || lastMsg.content.length > 1800) {
+                lastMsg = await channel.send(`
+                    \`\`\`${str}\`\`\`
+                `);
+            } else {
+                let lastContent = lastMsg.content;
+                lastContent = lastMsg.content.substring(3, lastContent.length-3);
+                lastMsg = await lastMsg.edit(`
+                    \`\`\`${lastContent+str}\`\`\`
+                `);
+            }
         }
-    }, 500);
+    }, 2000);
     bot.on('messageCreate', async(msg) => {
         if (!msg.author.bot && msg.channelId == credentials.log_channel) {
             if (msg.content == 'r' && isServerRunning) {
@@ -61,6 +70,8 @@ const start = () => {
     });
     srv.on('spawn', () => {
         isServerRunning = true;
+        lastMsg = false;
+        logBuffer = [];
     });
     srv.on('exit', () => {
         setTimeout(start, 1000);

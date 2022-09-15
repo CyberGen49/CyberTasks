@@ -287,7 +287,7 @@ async function updateLists(force = false) {
                                 label: 'Yes',
                                 primary: true,
                                 action: async() => {
-                                    const res = await (`lists/${list.id}/delete`, false, 'DELETE');
+                                    const res = await api.delete(`lists/${list.id}/delete`);
                                     if (res.success) {
                                         await updateLists();
                                         changeActiveList(lists[1]);
