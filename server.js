@@ -1,4 +1,6 @@
 
+process.chdir(__dirname);
+
 const fs = require('fs');
 const cp = require('child_process');
 const clc = require('cli-color');
@@ -16,11 +18,18 @@ function randomHex(length = 8) {
     return str;
 }
 
-process.chdir(__dirname);
+let dbPath = './main.db';
+let isDev = false;
+let devConfig = {};
+if (fs.existsSync('devConfig.json')) {
+    isDev = true;
+    devConfig = JSON.parse(fs.readFileSync('devConfig.json', 'utf-8'));
+    dbPath = devConfig.db_path || dbPath;
+}
 
 // Update database schema file
 const schema = cp.spawn(`sqlite3`, [
-    'main.db', '--cmd', 
+    dbPath, '--cmd', 
     '.output database-schema.sql',
     '.schema',
     '.quit'
@@ -30,7 +39,7 @@ schema.on('exit', () => {
 });
 
 // Update list pending and completed task numbers
-const db = new sqlite3('./main.db');
+const db = new sqlite3(dbPath);
 const lists = db.prepare(`SELECT id FROM lists`).all();
 lists.forEach((list) => {
     const tasks = db.prepare(`SELECT is_complete FROM tasks WHERE list_id = ?`).all(list.id);
@@ -190,10 +199,44 @@ srv.get('/api/users/search', get_active_user, (req, res) => {
 srv.delete('/api/users/access/allow', get_active_user, (req, res) => {
     return res.json_end_error('notImplemented', `This endpoint isn't implemented yet!`, 501);
 });
+
+function getLists(db, user) {
+    return db.prepare('SELECT * FROM lists WHERE owner = ?').all(user.id);
+}
+function getFolders(db, user) {
+    return db.prepare('SELECT * FROM list_folders WHERE owner = ?').all(user.id);
+}
+function getList(db, id) {
+    return db.prepare('SELECT * FROM lists WHERE id = ?').get(id);
+}
+function getFolder(db, id) {
+    return db.prepare('SELECT * FROM list_folders WHERE id = ?').get(id);
+}
+function getTasks(db, user, opts) {
+    let tasks;
+    if (opts.list_id) {
+        tasks = db.prepare('SELECT * FROM tasks WHERE owner = ? AND list_id = ? AND is_complete = ?').all(user.id, opts.list_id, opts.is_complete) || [];
+    } else {
+        tasks = db.prepare('SELECT * FROM tasks WHERE owner = ? AND due_date_time > 0 AND due_date_time < ? AND is_complete = 0').all(user.id, (Date.now()+(1000*60*60*24*opts.days))) || [];
+    }
+    for (let i = 0; i < tasks.length; i++) {
+        tasks[i].steps = db.prepare('SELECT * FROM task_steps WHERE task_id = ?').all(tasks[i].id) || [];
+    }
+    return tasks;
+}
+function getTask(db, id) {
+    let task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+    task.steps = db.prepare('SELECT * FROM task_steps WHERE task_id = ?').all(id) || [];
+    return task;
+}
+function getStep(db, id) {
+    return db.prepare('SELECT * FROM task_steps WHERE id = ?').get(id);
+}
+
 // Get lists
 srv.get('/api/lists', get_active_user, (req, res) => {
-    res.out.lists = res.db.prepare('SELECT * FROM lists WHERE owner = ?').all(req.user.id) || {};
-    res.out.folders = res.db.prepare('SELECT * FROM list_folders WHERE owner = ?').all(req.user.id) || {};
+    res.out.lists = getLists(res.db, req.user);
+    res.out.folders = getFolders(res.db, req.user);
     return res.json_end();
 });
 // Sort sidebar
@@ -229,7 +272,7 @@ srv.post('/api/lists/create', get_active_user, (req, res) => {
     if (!req.is_param_valid((hue || hue === 0), (hue >= 0 && hue <= 360))) return;
     id = Date.now();
     res.db.prepare('INSERT INTO lists (id, owner, name, hue) VALUES (?, ?, ?, ?)').run(id, req.user.id, name, hue);
-    res.out.list = res.db.prepare('SELECT * FROM lists WHERE id = ?').get(id);
+    res.out.list = getList(id);
     return res.json_end(201);
 });
 // Edit list
@@ -242,7 +285,7 @@ srv.put('/api/lists/:id/edit', get_active_user, (req, res) => {
         return;
     if (!req.is_param_valid((hue || hue === 0), (hue >= 0 && hue <= 360))) return;
     res.db.prepare(`UPDATE lists SET name = ?, hue = ? WHERE id = ? AND owner = ?`).run(name, hue, id, req.user.id);
-    res.out.list = res.db.prepare('SELECT * FROM lists WHERE id = ?').get(id);
+    res.out.list = getList(id);
     return res.json_end();
 });
 // Delete list
@@ -260,7 +303,7 @@ srv.post('/api/lists/folders/create', get_active_user, (req, res) => {
         return;
     id = Date.now();
     res.db.prepare('INSERT INTO list_folders (id, owner, name) VALUES (?, ?, ?)').run(id, req.user.id, name);
-    res.out.folder = res.db.prepare('SELECT * FROM list_folders WHERE id = ?').get(id);
+    res.out.folder = getFolder(res.db, id);
     return res.json_end(201);
 });
 // Edit list folder
@@ -271,7 +314,7 @@ srv.put('/api/lists/folders/:id/edit', get_active_user, (req, res) => {
     if (!req.is_param_valid(name, (name.length > 0 && name.length < 64)))
         return;
     res.db.prepare(`UPDATE list_folders SET name = ? WHERE id = ? AND owner = ?`).run(name, id, req.user.id);
-    res.out.folder = res.db.prepare('SELECT * FROM list_folders WHERE id = ?').get(id);
+    res.out.folder = getFolder(res.db, id);
     return res.json_end();
 });
 // Delete list folder
@@ -285,20 +328,27 @@ srv.delete('/api/lists/folders/:id/delete', get_active_user, (req, res) => {
 srv.get('/api/lists/:id/tasks/pending', get_active_user, (req, res) => {
     const listId = req.params.id;
     if (!req.is_param_valid(listId, res.db.prepare('SELECT id FROM lists WHERE owner = ? AND id = ?').get(req.user.id, listId))) return;
-    res.out.tasks = res.db.prepare('SELECT * FROM tasks WHERE owner = ? AND list_id = ? AND is_complete = 0').all(req.user.id, listId) || [];
-    for (let i = 0; i < res.out.tasks.length; i++) {
-        res.out.tasks[i].steps = res.db.prepare('SELECT * FROM task_steps WHERE owner = ? AND task_id = ?').all(req.user.id, res.out.tasks[i].id) || [];
-    }
+    res.out.tasks = getTasks(res.db, req.user, {
+        list_id: listId,
+        is_complete: 0
+    });
     return res.json_end();
 });
 // Get list complete tasks
 srv.get('/api/lists/:id/tasks/complete', get_active_user, (req, res) => {
     const listId = req.params.id;
     if (!req.is_param_valid(listId, res.db.prepare('SELECT id FROM lists WHERE owner = ? AND id = ?').get(req.user.id, listId))) return;
-    res.out.tasks = res.db.prepare('SELECT * FROM tasks WHERE owner = ? AND list_id = ? AND is_complete = 1').all(req.user.id, listId) || [];
-    for (let i = 0; i < res.out.tasks.length; i++) {
-        res.out.tasks[i].steps = res.db.prepare('SELECT * FROM task_steps WHERE owner = ? AND task_id = ?').all(req.user.id, res.out.tasks[i].id) || [];
-    }
+    res.out.tasks = getTasks(res.db, req.user, {
+        list_id: listId,
+        is_complete: 1
+    });
+    return res.json_end();
+});
+// Get global upcoming and past due tasks
+srv.get('/api/tasks/upcoming', get_active_user, (req, res) => {
+    const days = parseInt(req.query.get('days')) || 7;
+    if (!req.is_param_valid(days, (days > 0 && days <= 90))) return;
+    res.out.tasks = getTasks(res.db, req.user, { days: days });
     return res.json_end();
 });
 // Get list collaborators
@@ -313,16 +363,6 @@ srv.post('/api/lists/:id/users/add', get_active_user, (req, res) => {
 srv.delete('/api/lists/:id/users/remove', get_active_user, (req, res) => {
     return res.json_end_error('notImplemented', `This endpoint isn't implemented yet!`, 501);
 });
-// Get global upcoming and past due tasks
-srv.get('/api/tasks/upcoming', get_active_user, (req, res) => {
-    const days = parseInt(req.query.get('days')) || 7;
-    if (!req.is_param_valid(days, (days > 0 && days <= 90))) return;
-    res.out.tasks = res.db.prepare('SELECT * FROM tasks WHERE owner = ? AND due_date_time > 0 AND due_date_time < ? AND is_complete = 0').all(req.user.id, (Date.now()+(1000*60*60*24*days))) || [];
-    for (let i = 0; i < res.out.tasks.length; i++) {
-        res.out.tasks[i].steps = res.db.prepare('SELECT * FROM task_steps WHERE owner = ? AND task_id = ?').all(req.user.id, res.out.tasks[i].id) || [];
-    }
-    return res.json_end();
-});
 // Change list sort order
 srv.put('/api/lists/:id/tasks/sort', get_active_user, (req, res) => {
     const id = req.params.id;
@@ -332,7 +372,7 @@ srv.put('/api/lists/:id/tasks/sort', get_active_user, (req, res) => {
     const validOrders = ['created', 'az', 'due'];
     if (!req.is_param_valid(order, validOrders.includes(order))) return;
     res.db.prepare(`UPDATE lists SET sort_order = ?, sort_reverse = ? WHERE id = ? AND owner = ?`).run(order, reverse, id, req.user.id);
-    res.out.list = res.db.prepare('SELECT * FROM lists WHERE id = ?').get(id);
+    res.out.list = getList(id);
     return res.json_end();
 });
 // Create task
@@ -344,8 +384,7 @@ srv.post('/api/lists/:id/tasks/create', get_active_user, (req, res) => {
     const id = Date.now();
     res.db.prepare('INSERT INTO tasks (id, list_id, owner, name) VALUES (?, ?, ?, ?)').run(id, listId, req.user.id, name);
     res.db.prepare('UPDATE lists SET count_pending = count_pending + 1 WHERE id = ?').run(listId);
-    res.out.task = res.db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
-    res.out.task.steps = [];
+    res.out.task = getTask(res.db, id);
     return res.json_end(201);
 });
 // Edit task
@@ -369,9 +408,8 @@ srv.put('/api/tasks/:id/edit', get_active_user, (req, res) => {
         res.db.prepare(`UPDATE tasks SET desc = ? WHERE id = ?`).run(desc, id);
     if (entry.due_date !== due)
         res.db.prepare(`UPDATE tasks SET due_date = ?, due_date_time = ? WHERE id = ?`).run(due, dueTime, id);
-    res.out.task = res.db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
-    res.out.task.steps = res.db.prepare('SELECT * FROM task_steps WHERE task_id = ?').get(id) || [];
-    res.out.list = res.db.prepare('SELECT * FROM lists WHERE id = ?').get(entry.list_id);
+    res.out.task = getTask(res.db, id);
+    res.out.list = getList(res.db, entry.list_id);
     return res.json_end();
 });
 // Toggle task completion status
@@ -388,9 +426,8 @@ srv.put('/api/tasks/:id/toggleComplete', get_active_user, (req, res) => {
         res.db.prepare('UPDATE lists SET count_pending = count_pending + 1 WHERE id = ?').run(entry.list_id);
         res.db.prepare('UPDATE lists SET count_complete = count_complete - 1 WHERE id = ?').run(entry.list_id);
     }
-    res.out.task = res.db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
-    res.out.task.steps = res.db.prepare('SELECT * FROM task_steps WHERE task_id = ?').get(id) || [];
-    res.out.list = res.db.prepare('SELECT * FROM lists WHERE id = ?').get(entry.list_id);
+    res.out.task = getTask(res.db, id);
+    res.out.list = getList(res.db, entry.list_id);
     return res.json_end();
 });
 // Move task to another list
@@ -410,6 +447,7 @@ srv.delete('/api/tasks/:id/delete', get_active_user, (req, res) => {
     let countCol = 'count_pending';
     if (parseInt(entry.is_complete)) countCol = 'count_complete';
     res.db.prepare(`UPDATE lists SET ${countCol} = ${countCol} - 1 WHERE id = ?`).run(entry.list_id);
+    res.out.list = getList(res.db, entry.list_id);
     return res.json_end();
 });
 // Create task step
@@ -420,9 +458,8 @@ srv.post('/api/tasks/:id/steps/create', get_active_user, (req, res) => {
     if (!req.is_param_valid(name, (name.length > 0 && name.length < 128))) return;
     const id = Date.now();
     res.db.prepare('INSERT INTO task_steps (id, task_id, owner, name) VALUES (?, ?, ?, ?)').run(id, taskId, req.user.id, name);
-    res.out.step = res.db.prepare('SELECT * FROM task_steps WHERE id = ?').get(id);
-    res.out.task = res.db.prepare('SELECT * FROM tasks WHERE id = ?').get(taskId);
-    res.out.task.steps = res.db.prepare('SELECT * FROM task_steps WHERE task_id = ?').get(taskId) || [];
+    res.out.step = getStep(res.db, id);
+    res.out.task = getTask(res.db, taskId);
     return res.json_end(201);
 });
 // Edit task step
@@ -432,9 +469,8 @@ srv.put('/api/steps/:id/edit', get_active_user, (req, res) => {
     const entry = res.db.prepare(`SELECT id, task_id, is_complete FROM task_steps WHERE owner = ? AND id = ?`).get(req.user.id, id);
     if (!req.is_param_valid(id, entry)) return;
     res.db.prepare('UPDATE task_steps SET name = ? WHERE id = ?').run(name, id);
-    res.out.step = res.db.prepare('SELECT * FROM task_steps WHERE id = ?').get(id);
-    res.out.task = res.db.prepare('SELECT * FROM tasks WHERE id = ?').get(entry.task_id);
-    res.out.task.steps = res.db.prepare('SELECT * FROM task_steps WHERE task_id = ?').all(entry.task_id) || [];
+    res.out.step = getStep(res.db, id);
+    res.out.task = getTask(res.db, entry.task_id);
     return res.json_end();
 });
 // Toggle task step completion status
@@ -444,9 +480,8 @@ srv.put('/api/steps/:id/toggleComplete', get_active_user, (req, res) => {
     if (!req.is_param_valid(id, entry)) return;
     const newCompletionStatus = (!entry.is_complete) ? 1 : 0;
     res.db.prepare('UPDATE task_steps SET is_complete = ? WHERE id = ?').run(newCompletionStatus, id);
-    res.out.step = res.db.prepare('SELECT * FROM task_steps WHERE id = ?').get(id);
-    res.out.task = res.db.prepare('SELECT * FROM tasks WHERE id = ?').get(entry.task_id);
-    res.out.task.steps = res.db.prepare('SELECT * FROM task_steps WHERE task_id = ?').all(entry.task_id) || [];
+    res.out.step = getStep(res.db, id);
+    res.out.task = getTask(res.db, entry.task_id);
     return res.json_end();
 });
 // Delete task step
@@ -455,8 +490,7 @@ srv.delete('/api/steps/:id/delete', get_active_user, (req, res) => {
     const entry = res.db.prepare(`SELECT id, task_id, is_complete FROM task_steps WHERE owner = ? AND id = ?`).get(req.user.id, id);
     if (!req.is_param_valid(id, entry)) return;
     res.db.prepare('DELETE FROM task_steps WHERE owner = ? AND id = ?').run(req.user.id, id);
-    res.out.task = res.db.prepare('SELECT * FROM tasks WHERE id = ?').get(entry.task_id);
-    res.out.task.steps = res.db.prepare('SELECT * FROM task_steps WHERE task_id = ?').all(entry.task_id) || [];
+    res.out.task = getTask(res.db, entry.task_id);
     return res.json_end();
 });
 // Sort task steps
@@ -470,8 +504,7 @@ srv.put('/api/tasks/:id/steps/sort', get_active_user, (req, res) => {
         res.db.prepare(`UPDATE task_steps SET sort_pos = ? WHERE id = ? AND owner = ?`).run(i, id, req.user.id);
         i++;
     });
-    res.out.task = res.db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
-    res.out.task.steps = res.db.prepare('SELECT * FROM task_steps WHERE task_id = ?').all(id) || [];
+    res.out.task = getTask(res.db, id);
     return res.json_end();
 });
 
@@ -480,7 +513,7 @@ srv.get('/discord-callback', (req, res) => {
     res.redirect(`/?discord_code=${req.query.get('code')}`);
 });
 srv.get('/discord-login', async(req, res) => {
-    res.db = new sqlite3('./main.db');
+    res.db = new sqlite3(dbPath);
     // Make sure a code is supplied
     const code = req.query.get('code');
     if (!code) return res.status(400).json({ error: 'missingCode' });
