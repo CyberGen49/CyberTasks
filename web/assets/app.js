@@ -246,7 +246,7 @@ async function updateLists(force = false) {
             const elId = randomHex();
             if (list.sort_order) {
                 _id('lists').insertAdjacentHTML('beforeend', `
-                    <button id="${elId}" class="listEntry ${(list.hue) ? `changeColours`:''}" style="${(list.hue) ? `--fgHue: ${list.hue}`:''}" data-id="${list.id}" title="${list.name}<br><small><em>Right click for actions...</em></small>">
+                    <button id="${elId}" class="listEntry ${(list.hue) ? `changeColours`:''}" style="${(list.hue) ? `--fgHue: ${list.hue}`:''}" data-id="${list.id}" title="${list.name}<br><small>Right click for actions...</small>">
                         <span class="label">${escapeHTML(list.name)}</span>
                         <div class="handle"></div>
                     </button>
@@ -306,7 +306,7 @@ async function updateLists(force = false) {
                 });
             } else {
                 _id('lists').insertAdjacentHTML('beforeend', `
-                    <div id="${elId}" class="listFolder row align-center no-wrap" data-id="${list.id}" title="${escapeHTML(list.name)} (Category)<br><small><em>Right click for actions...</em></small>">
+                    <div id="${elId}" class="listFolder row align-center no-wrap" data-id="${list.id}" title="${escapeHTML(list.name)} (Category)<br><small>Right click for actions...</small>">
                         <span class="label">${escapeHTML(list.name)}</span>
                         <div class="handle"></div>
                     </div>
@@ -1164,7 +1164,7 @@ async function init() {
                 type: 'item',
                 name: name,
                 action: async() => {
-                    const res = await api.put(`lists/${activeList.id}/sort?order=${keySplit[0]}&reverse=${(parseInt(keySplit[1])) ? 'true':'false'}`);
+                    const res = await api.put(`lists/${activeList.id}/tasks/sort?order=${keySplit[0]}&reverse=${(parseInt(keySplit[1])) ? 'true':'false'}`);
                     if (res.success) {
                         updateLists();
                         activeList.sort_order = keySplit[0];

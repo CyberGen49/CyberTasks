@@ -55,9 +55,6 @@ db.close();
 const srv = express();
 srv.disable('etag');
 srv.use(bodyParser.json({ type: 'application/json' }));
-srv.use(express.static('web', {
-    index: 'app.html'
-}));
 
 // Add global middleware
 srv.use((req, res, next) => {
@@ -83,10 +80,15 @@ srv.use((req, res, next) => {
     return next();
 });
 
+// Set static files folder
+srv.use(express.static('web', {
+    index: 'app.html'
+}));
+
 // Add middleware to all API requests
 srv.use('/api/*', (req, res, next) => {
     // Open the database
-    res.db = sqlite3('main.db');
+    res.db = sqlite3(dbPath);
     // Set default scope (checked against API keys)
     res.scope = '';
     // Define extra functions
@@ -272,7 +274,7 @@ srv.post('/api/lists/create', get_active_user, (req, res) => {
     if (!req.is_param_valid((hue || hue === 0), (hue >= 0 && hue <= 360))) return;
     id = Date.now();
     res.db.prepare('INSERT INTO lists (id, owner, name, hue) VALUES (?, ?, ?, ?)').run(id, req.user.id, name, hue);
-    res.out.list = getList(id);
+    res.out.list = getList(res.db, id);
     return res.json_end(201);
 });
 // Edit list
@@ -285,7 +287,7 @@ srv.put('/api/lists/:id/edit', get_active_user, (req, res) => {
         return;
     if (!req.is_param_valid((hue || hue === 0), (hue >= 0 && hue <= 360))) return;
     res.db.prepare(`UPDATE lists SET name = ?, hue = ? WHERE id = ? AND owner = ?`).run(name, hue, id, req.user.id);
-    res.out.list = getList(id);
+    res.out.list = getList(res.db, id);
     return res.json_end();
 });
 // Delete list
@@ -372,7 +374,7 @@ srv.put('/api/lists/:id/tasks/sort', get_active_user, (req, res) => {
     const validOrders = ['created', 'az', 'due'];
     if (!req.is_param_valid(order, validOrders.includes(order))) return;
     res.db.prepare(`UPDATE lists SET sort_order = ?, sort_reverse = ? WHERE id = ? AND owner = ?`).run(order, reverse, id, req.user.id);
-    res.out.list = getList(id);
+    res.out.list = getList(res.db, id);
     return res.json_end();
 });
 // Create task
