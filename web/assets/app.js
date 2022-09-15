@@ -137,26 +137,30 @@ function addHueCircles(el, parent) {
 // Make a call to the API using the active user's access token
 // Returns the response as decoded JSON
 let callApiPopupTimeout;
+let isConnected = true;
 const api = {
-    call: async(endpoint, data = false, method = 'POST') => {
+    call: async(endpoint, data = false, method = 'GET') => {
         clearTimeout(callApiPopupTimeout);
         let popupId = false;
         callApiPopupTimeout = setTimeout(() => {
             popupId = showPopup(`Hang tight`, `Your request is taking longer than expected...`);
         }, 1000);
         let opts = {
-            headers: { 'CyberTasks-Token': token }
+            headers: { 'CyberTasks-Token': token },
+            method: method
         };
-        if (data || method !== 'POST')
-            opts.method = method;
         if (data) {
             opts.headers['Content-Type'] = 'application/json';
             opts.body = JSON.stringify(data);
         }
         const res = await fetch(`/api/${endpoint}`, opts).catch((e) => {
+            if (!isConnected) return;
+            isConnected = false;
             showPopup(`Request failed`, `A connection with the server couldn't be established. Make sure you're connected to the internet, then try again.`, [{
                 label: 'Refresh app',
-                action: window.location.reload
+                action: () => {
+                    window.location.reload();
+                }
             }]);
         });
         clearTimeout(callApiPopupTimeout);
@@ -171,7 +175,9 @@ const api = {
                 <p>${JSON.stringify(json)}</p>
             `, [{
                 label: 'Refresh app',
-                action: window.location.reload
+                action: () => {
+                    window.location.reload();
+                }
             }, {
                 label: 'Okay',
                 primary: true

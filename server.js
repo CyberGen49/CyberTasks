@@ -18,14 +18,14 @@ function randomHex(length = 8) {
     return str;
 }
 
-let dbPath = './main.db';
 let isDev = false;
 let devConfig = {};
 if (fs.existsSync('devConfig.json')) {
     isDev = true;
     devConfig = JSON.parse(fs.readFileSync('devConfig.json', 'utf-8'));
-    dbPath = devConfig.db_path || dbPath;
+    console.log(`Loaded development config:`, devConfig);
 }
+const dbPath = devConfig.db_path || './main.db';
 
 // Update database schema file
 const schema = cp.spawn(`sqlite3`, [
@@ -572,7 +572,7 @@ srv.get('/discord-login', async(req, res) => {
     return res.json({ token: token });
 });
 
-const port = 8726;
+const port = devConfig.port || 8726;
 srv.listen(port, () => {
     console.log(`Listening on port ${port}`);
 });
