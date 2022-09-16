@@ -30,7 +30,7 @@ bot.once('ready', () => {
         if (logBuffer.length > 0) {
             const str = logBuffer.join('');
             logBuffer = [];
-            if (!lastMsg || lastMsg.content.length > 1800) {
+            if (!lastMsg || lastMsg.content.length > 1000) {
                 lastMsg = await channel.send(`
                     \`\`\`${str}\`\`\`
                 `);
@@ -45,17 +45,22 @@ bot.once('ready', () => {
     }, 2000);
     bot.on('messageCreate', async(msg) => {
         if (!msg.author.bot && msg.channelId == credentials.log_channel) {
-            if (msg.content == 'r' && isServerRunning) {
-                await channel.send(`Restarting server...`);
-                srv.kill('SIGINT');
+            lastMsg = false;
+            switch (msg.content.toLowerCase()) {
+                case 'r':
+                    await msg.react('✅');
+                    srv.kill('SIGINT');
+                    break;
+                default: await msg.react('❌'); break;
             }
         }
     });
+    bot.user.setActivity("tasks.simplecyber.org");
 });
-if (credentials.bot_token) {
+if (credentials.bot_token && credentials.log_channel) {
     bot.login(credentials.bot_token);
 } else {
-    console.log(`No bot token in credentials, logs won't be sent to Discord`);
+    console.log(`Discord logging disabled, no bot token and/or log_channel ID`);
 }
 
 let srv;

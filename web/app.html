@@ -28,37 +28,12 @@
     <div id="main">
         <div id="banner" class="row justify-center align-center gap-10"></div>
         <div class="row flex-grow no-wrap" style="gap: 0px; height: 0px;">
-            <div id="sidebar" class="col">
-                <div class="top row no-shrink">
-                    <button id="menuClose" class="btn alt2 iconOnly noShadow" title="Close menu">
+            <div id="sidebar" class="col gap-0">
+                <div class="top row no-shrink align-center no-select">
+                    <button id="menuClose" class="btn alt2 iconOnly noShadow no-shrink" title="Close menu">
                         <div class="icon">close</div>
                     </button>
-                </div>
-                <div class="profileCard col gap-10 no-wrap">
-                    <div class="row align-center gap-10 flex-grow no-wrap">
-                        <img id="avatar">
-                        <div class="col" style="gap: 4px;">
-                            <span>Signed in as</span>
-                            <div class="nameCont">
-                                <span id="username"></span><span id="discriminator"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="row gap-8">
-                        <button id="signOut" class="btn small iconOnly noShadow" title="Sign out">
-                            <div class="icon">logout</div>
-                        </button>
-                        <div class="flex-grow"></div>
-                        <button id="openSettings" class="btn small iconOnly noShadow hidden" title="Settings">
-                            <div class="icon">settings</div>
-                        </button>
-                        <button id="installPrompt" class="btn small iconOnly noShadow  changeColours" style="--fgHue: 50;" title="Install">
-                            <div class="icon">install_desktop</div>
-                        </button>
-                        <button id="refresh" class="btn small iconOnly noShadow" title="Refresh app">
-                            <div class="icon">refresh</div>
-                        </button>
-                    </div>
+                    <div class="title flex-grow">CyberTasks</div>
                 </div>
                 <div id="listsCont">
                     <button id="listSchedule" class="listEntry changeColours" style="--fgHue: 200" title="View your past due and upcoming tasks">Scheduled tasks</button>
@@ -78,6 +53,18 @@
                     <div id="lists">
                         <!-- This element is populated by JS -->
                     </div>
+                </div>
+                <div class="profileCard row gap-10 no-wrap align-center">
+                    <img id="avatar">
+                    <div class="col flex-grow" style="gap: 4px;">
+                        <span>Signed in as</span>
+                        <div class="nameCont">
+                            <span id="username"></span><span id="discriminator"></span>
+                        </div>
+                    </div>
+                    <button id="accountContext" class="btn alt iconOnly no-shrink">
+                        <div class="icon">more_vert</div>
+                    </button>
                 </div>
             </div>
             <div id="sidebarDimming"></div>

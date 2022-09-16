@@ -108,11 +108,21 @@ function dueDateFormat(date) {
 
 function addHueCircles(el, parent) {
     let hueCircles = [];
-    const hues = [ 0, 25, 50, 110, 160, 200, 240, 280, 320 ];
+    const hues = [
+        { hue: 0, name: `Red` },
+        { hue: 25, name: `Orange` },
+        { hue: 50, name: `Yellow` },
+        { hue: 110, name: `Green` },
+        { hue: 160, name: `Aqua` },
+        { hue: 200, name: `Blue` },
+        { hue: 240, name: `Purple` },
+        { hue: 280, name: `Magenta` },
+        { hue: 320, name: `Pink` },
+    ]
     let tmp = [];
     hues.forEach((hue) => {
         tmp.push(`
-            <button class="hueCircle changeColours" style="--fgHue: ${hue}" data-hue="${hue}"></button>
+            <button class="hueCircle changeColours" style="--fgHue: ${hue.hue}" data-hue="${hue.hue}" title="${hue.name}<br><small>Hue ${hue.hue}°</small>"></button>
         `);
         if (tmp.length == 3) {
             hueCircles.push(`<div class="row gap-10">${tmp.join('')}</div>`);
@@ -358,6 +368,7 @@ async function updateLists(force = false) {
 }
 
 // Render or re-render a task in the current list
+let hoverTask = [];
 function showTask(task) {
     const id = randomHex();
     const existingEl = _qs(`.task[data-id="${task.id}"]`);
@@ -445,6 +456,7 @@ function showTask(task) {
             type: 'item',
             name: 'Move task...',
             icon: 'drive_file_move',
+            disabled: true,
             action: () => {
                 showPopup(`Move task`, `Coming soon™`, [{
                     label: 'Okay',
@@ -456,6 +468,7 @@ function showTask(task) {
             type: 'item',
             name: 'Duplicate task',
             icon: 'content_copy',
+            disabled: true,
             action: async() => {
                 showPopup(`Duplicate task`, `Coming soon™`, [{
                     label: 'Okay',
@@ -597,6 +610,7 @@ function changeActiveList(list, force = false) {
     // hide things while we fetch and render the new list
     const isSameList = (activeList.id == list.id);
     if (!isSameList) {
+        hoverTask = [];
         _id('list').classList.remove('visible');
         _id('listScrollArea').scrollTop = 0;
         _id('tasks').classList.remove('visible');
@@ -1042,9 +1056,8 @@ async function init() {
     _id('avatar').src = `https://cdn.discordapp.com/avatars/${user.discord_id}/${user.picture}.png?size=512`;
     _id('username').innerText = user.name;
     _id('discriminator').innerText = `#${user.discriminator}`;
-    // Add profile context menu
-    on(_id('avatar'), 'contextmenu', (e) => {
-        e.preventDefault();
+    // Handle account context menu
+    on(_id('accountContext'), 'click', () => {
         showContext([{
             type: 'item',
             name: 'Copy user ID',
@@ -1071,41 +1084,45 @@ async function init() {
                     }
                 }])
             }
-        }]);
-    });
-    // Handle sign out button
-    on(_id('signOut'), 'click', () => {
-        showPopup('Sign out?', `Are you sure you want to sign out? Any unsaved changes will be lost.`, [{
-            label: 'No',
-            escape: true
-        }, {
-            label: 'Yes',
-            primary: true,
+        }, { type: 'sep' }, {
+            type: 'item',
+            name: 'Refresh app',
+            icon: 'refresh',
+            tooltip: `Clears the app cache and refreshes, forcing any pending updates to be applied.`,
             action: async() => {
-                showPopup(`Signing out`, `We're signing you out...`);
-                await api.delete('me/sessions/end');
-                localStorageWipe();
+                showPopup('Refreshing', `Clearing app cache, hang tight...`);
+                await caches.delete('assets');
                 window.location.reload();
+            }
+        }, { type: 'sep' }, {
+            type: 'item',
+            name: 'Sign out...',
+            icon: 'logout',
+            action: async() => {
+                showPopup('Sign out?', `Are you sure you want to sign out? Any unsaved changes will be lost.`, [{
+                    label: 'No',
+                    escape: true
+                }, {
+                    label: 'Yes',
+                    primary: true,
+                    action: async() => {
+                        showPopup(`Signing out`, `We're signing you out...`);
+                        await api.delete('me/sessions/end');
+                        localStorageWipe();
+                        window.location.reload();
+                    }
+                }]);
+            }
+        }, {
+            type: 'item',
+            name: 'Settings',
+            icon: 'settings',
+            disabled: true,
+            action: () => {
+                // ...
             }
         }]);
     });
-    // Handle refresh button
-    on(_id('refresh'), 'click', async() => {
-        showPopup('Refreshing', `Clearing app cache, hang tight...`);
-        await caches.delete('assets');
-        window.location.reload();
-    });
-    // Handle install prompt
-    setInterval(() => {
-        _id('installPrompt').style.scale = '0.9';
-        setTimeout(() => {
-            _id('installPrompt').style.scale = '1.2';
-        }, 100);
-        setTimeout(() => {
-            _id('installPrompt').style.scale = '1';
-        }, 300);
-    }, 1000*10);
-    _id('installPrompt').classList.add('hidden');
     // Handle creating lists
     on(_id('createList'), 'click', createList);
     on(_id('createListFolder'), 'click', createListFolder);

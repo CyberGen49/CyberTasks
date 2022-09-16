@@ -68,7 +68,7 @@ body {
 #sidebar {
     width: 300px;
     height: 100%;
-    padding: 10px;
+    padding: 0px 10px 10px 10px;
     overflow: hidden;
     background: var(--b18);
     box-shadow: 2px 0px 5px 0px rgba(0, 0, 0, 0.2);
@@ -76,9 +76,19 @@ body {
     flex-shrink: 0;
 }
 #sidebar .top {
+    padding: 0px 5px;
+    height: 58px;
+}
+#sidebar .top #menuClose {
     display: none;
-    height: 60px;
-    margin-bottom: -25px;
+}
+#sidebar .top .title {
+    font-family: 'Quicksand';
+    font-weight: bold;
+    font-size: 26px;
+    color: var(--f80);
+    text-shadow: 0px 2px 5px rgba(0, 0, 0, 0.5);
+    text-align: center;
 }
 #sidebarDimming {
     position: fixed;
@@ -118,9 +128,35 @@ body {
     color: var(--b70);
 }
 
+@media screen and (max-width: 1100px) {
+    #sidebar {
+        position: fixed;
+        top: 0px;
+        left: -350px;
+        transition: 0.3s var(--bezier);
+    }
+    #sidebar.visible {
+        left: 0px;
+    }
+    #sidebar .top #menuClose {
+        display: flex;
+    }
+    #sidebar .top .title {
+        text-align: left;
+    }
+    #sidebarDimming.visible {
+        opacity: 1;
+        visibility: visible;
+    }
+    #menuOpen {
+        display: flex;
+    }
+}
+
 #sidebar #listsCont {
     padding: 10px;
-    margin: -10px 0px -10px -10px;
+    padding-top: 5px;
+    margin: 0px -10px 0px -10px;
     width: calc(100% + 20px); 
     flex-grow: 1;
     overflow-y: auto;
@@ -191,6 +227,7 @@ body {
 }
 #sidebar .listEntry .handle::before,
 #sidebar .listFolder .handle::before {
+    margin-right: -10px;
     padding: 5px;
     font-family: 'Material Symbols';
     font-size: 28px;
@@ -658,28 +695,6 @@ body {
 }
 .hueCircle:active:not(.selected) {
     transform: scale(0.9) !important;
-}
-
-@media screen and (max-width: 1100px) {
-    #sidebar {
-        position: fixed;
-        top: 0px;
-        left: -350px;
-        transition: 0.3s var(--bezier);
-    }
-    #sidebar.visible {
-        left: 0px;
-    }
-    #sidebar .top {
-        display: flex;
-    }
-    #sidebarDimming.visible {
-        opacity: 1;
-        visibility: visible;
-    }
-    #menuOpen {
-        display: flex;
-    }
 }
 
 ::-webkit-scrollbar {
