@@ -74,16 +74,19 @@ window.addEventListener('load', async() => {
 const showToastOpts = () => ({
     body: '',
     icon: '',
-    delay: 3000
+    delay: 3000,
+    hue: 200,
+    noClose: false,
+    iconSpin: false
 });
 function showToast(opts = showToastOpts()) {
     opts = Object.assign(showToastOpts(), opts);
     const id = randomHex();
     _id('toastCont').insertAdjacentHTML('afterbegin', `
-        <div id="${id}" class="toast row gap-10 align-center">
-            <div class="icon">${opts.icon}</div>
+        <div id="${id}" class="toast row gap-10 align-center no-wrap changeColours" style="--fgHue: ${opts.hue}">
+            <div class="icon ${(opts.iconSpin) ? 'rotate-ccw':''}">${opts.icon}</div>
             <div class="body">${opts.body}</div>
-            <button class="close btn alt2 small iconOnly" style="margin-left: 5px" title="Close toast">
+            <button class="close btn alt2 small iconOnly ${(opts.noClose) ? 'hidden':''}" style="margin-left: 5px" title="Close toast">
                 <div class="icon">close</div>
             </button>
         </div>
@@ -104,6 +107,7 @@ function showToast(opts = showToastOpts()) {
     return id;
 }
 function hideToast(id) {
+    if (!_id(id)) return;
     _id(id).classList.remove('visible');
     setTimeout(() => {
         _id(id).remove();
@@ -186,9 +190,13 @@ let isConnected = true;
 const api = {
     call: async(endpoint, data = false, method = 'GET') => {
         clearTimeout(callApiPopupTimeout);
-        let popupId = false;
+        let toastId = false;
         callApiPopupTimeout = setTimeout(() => {
-            popupId = showPopup(`Hang tight`, `Your request is taking longer than expected...`);
+            toastId = showToast({
+                icon: 'sync',
+                body: `Your request is taking longer than usual...`,
+                delay: 0, hue: 50, noClose: true, iconSpin: true
+            });
         }, 1000);
         let opts = {
             headers: { 'CyberTasks-Token': token },
@@ -209,29 +217,38 @@ const api = {
             }]);
         });
         clearTimeout(callApiPopupTimeout);
-        if (popupId) hidePopup(popupId);
+        if (toastId) hideToast(toastId);
         if (!res.ok) {
             let json = null;
             try {
                 json = await res.json();
             } catch(e) {}
-            showPopup(`Request failed`, `
-                <p>The request to API endpoint <b>${endpoint}</b> failed!</p>
-                <p>${JSON.stringify(json)}</p>
-            `, [{
-                label: 'Refresh app',
-                action: () => {
-                    window.location.reload();
-                }
-            }, {
-                label: 'Okay',
-                primary: true
-            }]);
-            console.log(`Failed API response`, json, res);
+            const toastId = showToast({
+                icon: 'sync_problem',
+                body: `Server ${method.toUpperCase()} request failed!<br><a>View details...</a>`,
+                delay: 15000, hue: 0
+            });
+            on(_qs('a', _id(toastId)), 'click', () => {
+                showPopup(`Request failed`, `
+                    <p>A request to the server failed! The details of the interaction are as follows:</p>
+                    <pre><code>Request: ${method.toUpperCase()} /api/${endpoint}\n\nResponse (${res.status}): ${JSON.stringify(json, null, 2)}</code></pre>
+                    <p>If this continues, <a target="_blank" href="/discord">join our Discord server</a> and make us aware of the issue, along with the contents of the box above.</p>
+                `, [{
+                    label: 'Refresh app',
+                    action: () => {
+                        window.location.reload();
+                    }
+                }, {
+                    label: 'Okay',
+                    primary: true
+                }]);
+                hideToast(toastId);
+            });
+            //console.log(`Failed API response`, json, res);
             return false;
         }
         const json = await res.json();
-        console.log(`API response from ${endpoint}:`, json);
+        //console.log(`API response from ${endpoint}:`, json);
         return json;
     },
     get: (endpoint, data) => {
@@ -1096,6 +1113,32 @@ function hideEditTask() {
 
 // Run once login is successful
 async function init() {
+    // Catch any uncaught errors and present them to the user
+    window.onerror = (msg, url, lineNo, columnNo, error) => {
+        const toastId = showToast({
+            icon: 'error',
+            body: `${msg}<br><a>View details...</a>`,
+            delay: 15000, hue: 0
+        });
+        on(_qs('a', _id(toastId)), 'click', () => {
+            showPopup(`CyberTasks client error`, `
+                <p>An error in the CyberTasks client has occurred! The details of the error are as follows:</p>
+                <pre><code>${new URL(url).pathname}:${lineNo}:${columnNo}\n${error.stack}</code></pre>
+                <p>If this continues, <a target="_blank" href="/discord">join our Discord server</a> and make us aware of the issue, along with the contents of the box above.</p>
+            `, [{
+                label: 'Refresh app',
+                action: () => {
+                    window.location.reload();
+                }
+            }, {
+                label: 'Okay',
+                primary: true
+            }]);
+            hideToast(toastId);
+        });
+        return false;
+    };
+    // Extend dayjs
     dayjs.extend(dayjs_plugin_advancedFormat);
     // Update profile elements
     _id('avatar').src = `https://cdn.discordapp.com/avatars/${user.discord_id}/${user.picture}.png?size=512`;
@@ -1468,7 +1511,7 @@ async function init() {
             <p>Keep in mind that this project is a private beta and you've been granted special access.</p>
             <p>This project isn't available to the public yet because it needs to be thoroughly tested by real users like you. With that said, please be mindful of your usage and don't intentionally spam or abuse the platform or API. This kind of abuse will result in the suspension of your account.</p>
             <p>CyberTasks is under active development, so things could change or disappear at any time. Development happens on a separate server, so changes should only appear when they're in a completed state.</p>
-            <p>Your feedback is extremely important during this phase, so if you run into any bugs or have features that you'd like to request, <a target="_blank" href="https://discord.gg/252ebXEMt4">join our Discord server</a> and let us know!</p>
+            <p>Your feedback is extremely important during this phase, so if you run into any bugs or have features that you'd like to request, <a target="_blank" href="/discord">join our Discord server</a> and let us know!</p>
         `, [{
             label: 'Okay',
             primary: true,

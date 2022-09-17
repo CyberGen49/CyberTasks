@@ -57,10 +57,10 @@ body {
     pointer-events: none;
 }
 #toastCont .toast {
-    max-width: 400px;
+    max-width: 600px;
     padding: 8px 12px;
     background: var(--b10);
-    border-left: 10px solid var(--f80);
+    border-left: 10px solid var(--f75);
     border-radius: 10px;
     scale: 0.7;
     opacity: 0;
@@ -74,9 +74,24 @@ body {
     font-size: 36px;
     color: var(--b85);
 }
+#toastCont .toast > .body {
+    line-height: 1.3;
+}
 #toastCont .toast.visible {
     scale: 1;
     opacity: 1;
+}
+
+@keyframes rotate-ccw {
+    from {
+        transform: rotate(360deg);
+    }
+    to {
+        transform: rotate(0deg);
+    }
+}
+.rotate-ccw {
+    animation: rotate-ccw 1.5s linear infinite;
 }
 
 #sidebar {

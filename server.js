@@ -671,6 +671,13 @@ srv.get('/discord-login', async(req, res) => {
     res.json({ token: token });
 });
 
+// Handle Discord server invite redirect
+if (credentials.discord_invite) {
+    srv.get('/discord', (req, res) => {
+        res.redirect(credentials.discord_invite);
+    });
+}
+
 const port = devConfig.port || 8726;
 srv.listen(port, () => {
     console.log(`Listening on port ${port}`);
