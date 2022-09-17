@@ -83,10 +83,13 @@ function showToast(opts = showToastOpts()) {
         <div id="${id}" class="toast row gap-10 align-center">
             <div class="icon">${opts.icon}</div>
             <div class="body">${opts.body}</div>
-        </div> 
+            <button class="close btn alt2 small iconOnly" title="Close toast">
+                <div class="icon">close</div>
+            </button>
+        </div>
     `);
     let toastTimeout;
-    on(_id(id), 'click', () => {
+    on(_qs('.close', _id(id)), 'click', () => {
         clearTimeout(toastTimeout);
         hideToast(id);
     });
