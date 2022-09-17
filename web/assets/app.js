@@ -83,7 +83,7 @@ function showToast(opts = showToastOpts()) {
         <div id="${id}" class="toast row gap-10 align-center">
             <div class="icon">${opts.icon}</div>
             <div class="body">${opts.body}</div>
-            <button class="close btn alt2 small iconOnly" title="Close toast">
+            <button class="close btn alt2 small iconOnly" style="margin-left: 5px" title="Close toast">
                 <div class="icon">close</div>
             </button>
         </div>
@@ -108,6 +108,10 @@ function hideToast(id) {
     setTimeout(() => {
         _id(id).remove();
     }, 200);
+}
+
+function showToastConfirm(text) {
+    showToast({ icon: 'check', body: text, delay: 1500 });
 }
 
 async function copyText(text) {
@@ -506,6 +510,14 @@ function showTask(task) {
                     primary: true,
                     escape: true
                 }]);
+            }
+        }, { type: 'sep' }, {
+            type: 'item',
+            name: 'Set due date...',
+            icon: 'edit_calendar',
+            disabled: true,
+            action: () => {
+                // ...
             }
         }, { type: 'sep' }, {
             type: 'item',
@@ -955,11 +967,13 @@ function editTaskShowStep(step, focus = false) {
                 });
                 if (res.success) {
                     el.dataset.id = res.step.id;
+                    showToastConfirm('Step created!');
                 }
             } else {
                 res = await api.put(`steps/${stepId}/edit`, {
                     name: value
                 });
+                showToastConfirm('Step updated!');
             }
             if (res.success) {
                 showTask(res.task);
@@ -1137,7 +1151,11 @@ async function init() {
                     label: 'Yes',
                     primary: true,
                     action: async() => {
-                        showPopup(`Signing out`, `We're signing you out...`);
+                        showToast({
+                            icon: 'logout',
+                            body: 'Signing out...',
+                            delay: 0
+                        });
                         await api.delete('me/sessions/end');
                         localStorageWipe();
                         window.location.reload();
@@ -1291,7 +1309,7 @@ async function init() {
                     if (tasks[i].id == activeTask.id)
                         tasks[i] = activeTask;
                 });
-                showToast({ icon: 'check', body: 'Task name updated!', delay: 1000 });
+                showToastConfirm('Task name updated!');
             }
         }, 500);
     });
@@ -1326,7 +1344,7 @@ async function init() {
                     if (tasks[i].id == activeTask.id)
                         tasks[i] = activeTask;
                 });
-                showToast({ icon: 'check', body: 'Step order updated!', delay: 1000 });
+                showToastConfirm('Step order updated!');
             }
         }
     });
@@ -1384,7 +1402,7 @@ async function init() {
                     if (tasks[i].id == activeTask.id)
                         tasks[i] = activeTask;
                 });
-                showToast({ icon: 'check', body: 'Task notes updated!', delay: 1000 });
+                showToastConfirm('Task notes updated!');
             }
         }, 500);
     });
@@ -1428,12 +1446,14 @@ async function init() {
             [..._id('lists').children].forEach((el) => {
                 if (!ids.includes(el.dataset.id))
                     ids.push(el.dataset.id);
+                else
+                    el.remove();
             });
             const res = await api.put('lists/sort', {
                 order: ids
             });
             if (res.success) {
-                showToast({ icon: 'check', body: 'List order updated!', delay: 1000 });
+                showToastConfirm('List order updated!');
             }
         }
     });
@@ -1445,10 +1465,10 @@ async function init() {
     if (!localStorageObjGet('seenBetaNotice')) {
         showPopup(`Hey`, `
             <p>Thanks for trying out CyberTasks!</p>
-            <p>Keep in mind that this project is in a private beta stage and you've been granted special access to give it a test drive.</p>
-            <p>Part of the reason this project isn't available to the public yet is due to of limited resources. There are no rate limits, but please be mindful of your usage. Don't abuse the platform by creating unnecessary amounts of lists or tasks, or by making excessive API calls. This kind of abuse will result in the revocation of your access.</p>
-            <p>CyberTasks is under active development, so things could change or disappear at any time. Development happens live on this server, so there could also be spans of time where things aren't working properly.</p>
-            <p>If you run into any bugs, or have features that you'd like to request, direct them to <b>@Cyber#1000</b> on Discord.</p>
+            <p>Keep in mind that this project is a private beta and you've been granted special access.</p>
+            <p>This project isn't available to the public yet because it needs to be thoroughly tested by real users like you. With that said, please be mindful of your usage and don't intentionally spam or abuse the platform or API. This kind of abuse will result in the suspension of your account.</p>
+            <p>CyberTasks is under active development, so things could change or disappear at any time. Development happens on a separate server, so changes should only appear when they're in a completed state.</p>
+            <p>Your feedback is extremely important during this phase, so if you run into any bugs or have features that you'd like to request, <a target="_blank" href="https://discord.gg/252ebXEMt4">join our Discord server</a> and let us know!</p>
         `, [{
             label: 'Okay',
             primary: true,

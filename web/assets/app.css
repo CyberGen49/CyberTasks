@@ -58,10 +58,10 @@ body {
 }
 #toastCont .toast {
     max-width: 400px;
-    padding: 10px 15px;
+    padding: 8px 12px;
     background: var(--b10);
-    border-left: 12px solid var(--f80);
-    border-radius: 12px;
+    border-left: 10px solid var(--f80);
+    border-radius: 10px;
     scale: 0.7;
     opacity: 0;
     transition: 0.2s var(--bezier);
@@ -71,7 +71,7 @@ body {
 }
 #toastCont .toast > .icon {
     font-family: 'Material Symbols';
-    font-size: 32px;
+    font-size: 36px;
     color: var(--b85);
 }
 #toastCont .toast.visible {
