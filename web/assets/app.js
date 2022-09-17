@@ -71,19 +71,47 @@ window.addEventListener('load', async() => {
     window.history.replaceState(null, '', '/');
 });
 
-function showBanner(text, icon, timeout = 5000) {
-    _id('banner').innerHTML = `
-        ${(icon) ? `<div class="icon">${icon}</div>`:''}
-        <div class="text">${text}</div>
-    `;
-    _id('banner').classList.add('visible');
+const showToastOpts = () => ({
+    body: '',
+    icon: '',
+    delay: 3000
+});
+function showToast(opts = showToastOpts()) {
+    opts = Object.assign(showToastOpts(), opts);
+    const id = randomHex();
+    _id('toastCont').insertAdjacentHTML('afterbegin', `
+        <div id="${id}" class="toast row gap-10 align-center">
+            <div class="icon">${opts.icon}</div>
+            <div class="body">${opts.body}</div>
+        </div> 
+    `);
+    let toastTimeout;
+    on(_id(id), 'click', () => {
+        clearTimeout(toastTimeout);
+        hideToast(id);
+    });
+    toastTimeout = setTimeout(() => {
+        _id(id).classList.add('visible');
+        if (opts.delay) {
+            toastTimeout = setTimeout(() => {
+                hideToast(id);
+            }, opts.delay);
+        }
+    }, 50);
+    return id;
+}
+function hideToast(id) {
+    _id(id).classList.remove('visible');
     setTimeout(() => {
-        _id('banner').classList.remove('visible');
-    }, timeout);
+        _id(id).remove();
+    }, 200);
 }
 
 async function copyText(text) {
-    showBanner('Text copied to clipboard', 'content_copy');
+    showToast({
+        body: 'Text copied to clipboard',
+        icon: 'content_copy'
+    })
     return navigator.clipboard.writeText(text);
 }
 
@@ -1260,6 +1288,7 @@ async function init() {
                     if (tasks[i].id == activeTask.id)
                         tasks[i] = activeTask;
                 });
+                showToast({ icon: 'check', body: 'Task name updated!', delay: 1000 });
             }
         }, 500);
     });
@@ -1294,6 +1323,7 @@ async function init() {
                     if (tasks[i].id == activeTask.id)
                         tasks[i] = activeTask;
                 });
+                showToast({ icon: 'check', body: 'Step order updated!', delay: 1000 });
             }
         }
     });
@@ -1351,6 +1381,7 @@ async function init() {
                     if (tasks[i].id == activeTask.id)
                         tasks[i] = activeTask;
                 });
+                showToast({ icon: 'check', body: 'Task notes updated!', delay: 1000 });
             }
         }, 500);
     });
@@ -1398,6 +1429,9 @@ async function init() {
             const res = await api.put('lists/sort', {
                 order: ids
             });
+            if (res.success) {
+                showToast({ icon: 'check', body: 'List order updated!', delay: 1000 });
+            }
         }
     });
     // Select the last active list or the top list
