@@ -330,8 +330,8 @@ srv.delete('/api/me/sessions/end', get_user, (req, res) => {
     send_audit(req.user, `ended a session`);
 });
 // Get Discord user by ID
-srv.get('/api/discordUserById', get_user, check_admin, async(req, res) => {
-    const id = req.query.get('id');
+srv.get('/api/discordUser/:id', get_user, check_admin, async(req, res) => {
+    const id = req.params.id;
     if (!req.is_param_valid(id, true)) return;
     const user = await getDiscordUserById(id);
     if (!req.is_param_valid(user, true)) return;
@@ -341,12 +341,12 @@ srv.get('/api/discordUserById', get_user, check_admin, async(req, res) => {
 // Get all allowed Discord users
 srv.get('/api/users/allowed', get_user, check_admin, async(req, res) => {
     res.out.ids = require('./allowedUsers.json');
-    /*res.out.users = [];
+    res.out.users = [];
     for (const id of res.out.ids) {
         let user = { id: id };
-        if (bot) user = await getDiscordUserById(id);
+        user = await getDiscordUserById(id);
         res.out.users.push(user);
-    }*/
+    }
     res.json_end();
 });
 // Allow a Discord user to access CyberTasks

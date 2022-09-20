@@ -1235,22 +1235,13 @@ async function openSettings() {
             </div>
         `);
         const updateAllowedUserList = async() => {
-            _id('allowedUsersList').innerHTML = 'Fetching IDs...';
-            const allowedIds = (await api.get('users/allowed')).ids;
-            _id('allowUserCount').innerHTML = `${allowedIds.length} users so far`;
-            let allowedUsers = [];
-            let i = 0;
-            for (const id of allowedIds) {
-                _id('allowedUsersList').innerHTML = `Fetching details for user ${i+1} of ${allowedIds.length}...`;
-                const res = await api.get(`discordUserById?id=${id}`);
-                if (res.success) allowedUsers.push(res.user);
-                else allowedUsers.push({
-                    id: id,
-                    username: 'Unknown',
-                    discriminator: '0000'
-                });
-                i++;
-            }
+            _id('allowedUsersList').innerHTML = 'Fetching users...';
+            let timeout = setTimeout(() => {
+                _id('allowedUsersList').innerHTML = 'Hang tight, still getting that user data...';
+            }, 5000);
+            const allowedUsers = (await api.get('users/allowed')).users;
+            clearTimeout(timeout);
+            _id('allowUserCount').innerHTML = `${allowedUsers.length} users so far`;
             _id('allowedUsersList').innerHTML = ``;
             allowedUsers.forEach((user) => {
                 if (!_id('allowedUsersList')) return;
