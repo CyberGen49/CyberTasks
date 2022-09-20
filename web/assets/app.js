@@ -1311,7 +1311,7 @@ async function openSettings() {
                 _id('allowUserConfirm').disabled = true;
                 _id('allowUserProfileCheck').innerText = `Checking...`;
                 timeout = setTimeout(async() => {
-                    const res = await api.get(`discordUserById?id=${_id('allowNewUserInput').value}`);
+                    const res = await api.get(`discordUser/${_id('allowNewUserInput').value}`);
                     if (res.success) {
                         const user = res.user;
                         _id('allowUserProfileCheck').innerHTML = `
