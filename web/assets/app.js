@@ -1226,7 +1226,7 @@ async function openSettings() {
                             <div class="icon">refresh</div>
                         </button>
                     </div>
-                    <div id="allowedUsersList" class="section col gap-10"></div>
+                    <div id="allowedUsersList" class="section col gap-12"></div>
                 </div>
                 <small class="desc">
                     <p>Allow more people to use CyberTasks by adding their Discord IDs here, and remove any bad actors by clicking the X button.</p>
@@ -1249,7 +1249,7 @@ async function openSettings() {
                 _id('allowedUsersList').insertAdjacentHTML('beforeend', `
                     <div class="row no-wrap align-center">
                         <div class="userEntry flex-grow">
-                            <img class="avatar" src="${(user.avatar) ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`:'https://cdn.discordapp.com/embed/avatars/0.png'}">
+                            <img class="avatar small" src="${(user.avatar) ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`:'https://cdn.discordapp.com/embed/avatars/0.png'}">
                             <div class="col">
                                 <div class="nameCont">
                                     <span id="username">${user.username}</span><span class="discriminator">#${user.discriminator}</span>
@@ -1257,7 +1257,7 @@ async function openSettings() {
                                 <span class="desc">ID: ${user.id}</span>
                             </div>
                         </div>
-                        <button id="${removeId}" class="btn alt iconOnly">
+                        <button id="${removeId}" class="btn alt small iconOnly">
                             <div class="icon">close</div>
                         </button>
                     </div>
