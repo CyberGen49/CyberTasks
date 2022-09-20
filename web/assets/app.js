@@ -1219,7 +1219,9 @@ async function openSettings() {
                             <div class="icon">person_add</div>
                             Add user...
                         </button>
-                        <div class="flex-grow"></div>
+                        <div class="flex-grow">
+                            <small id="allowUserCount"></small>
+                        </div>
                         <button id="allowUserRefresh" class="btn alt iconOnly">
                             <div class="icon">refresh</div>
                         </button>
@@ -1233,16 +1235,30 @@ async function openSettings() {
             </div>
         `);
         const updateAllowedUserList = async() => {
-            const allowedUsers = (await api.get('users/allowed')).users;
-            if (!_id('allowedUsersList')) return;
-            _id('allowedUsersList').innerHTML = '';
+            _id('allowedUsersList').innerHTML = 'Fetching IDs...';
+            const allowedIds = (await api.get('users/allowed')).ids;
+            _id('allowUserCount').innerHTML = `${allowedIds.length} users so far`;
+            let allowedUsers = [];
+            let i = 0;
+            for (const id of allowedIds) {
+                _id('allowedUsersList').innerHTML = `Fetching details for user ${i+1} of ${allowedIds.length}...`;
+                const res = await api.get(`discordUserById?id=${id}`);
+                if (res.success) allowedUsers.push(res.user);
+                else allowedUsers.push({
+                    id: id,
+                    username: 'Unknown',
+                    discriminator: '0000'
+                });
+                i++;
+            }
+            _id('allowedUsersList').innerHTML = ``;
             allowedUsers.forEach((user) => {
                 if (!_id('allowedUsersList')) return;
                 const removeId = randomHex();
                 _id('allowedUsersList').insertAdjacentHTML('beforeend', `
                     <div class="row no-wrap align-center">
                         <div class="userEntry flex-grow">
-                            <img class="avatar" src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64">
+                            <img class="avatar" src="${(user.avatar) ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64`:'https://cdn.discordapp.com/embed/avatars/0.png'}">
                             <div class="col">
                                 <div class="nameCont">
                                     <span id="username">${user.username}</span><span class="discriminator">#${user.discriminator}</span>

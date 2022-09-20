@@ -340,13 +340,13 @@ srv.get('/api/discordUserById', get_user, check_admin, async(req, res) => {
 });
 // Get all allowed Discord users
 srv.get('/api/users/allowed', get_user, check_admin, async(req, res) => {
-    res.out.allowed_ids = require('./allowedUsers.json');
-    res.out.users = [];
-    for (const id of res.out.allowed_ids) {
+    res.out.ids = require('./allowedUsers.json');
+    /*res.out.users = [];
+    for (const id of res.out.ids) {
         let user = { id: id };
         if (bot) user = await getDiscordUserById(id);
         res.out.users.push(user);
-    }
+    }*/
     res.json_end();
 });
 // Allow a Discord user to access CyberTasks
