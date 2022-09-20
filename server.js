@@ -356,7 +356,7 @@ srv.post('/api/users/allowed/add', get_user, check_admin, async(req, res) => {
     const user = await getDiscordUserById(id);
     if (!req.is_param_valid(user, true)) return;
     let allowedUsers = require('./allowedUsers.json');
-    allowedUsers.push(id);
+    if (!allowedUsers.includes(id)) allowedUsers.push(id);
     fs.writeFileSync('./allowedUsers.json', JSON.stringify(allowedUsers, null, 4));
     res.json_end();
     send_audit(req.user, `added [**${user.username}#${user.discriminator}**](https://discordlookup.com/user/${user.discord_id}) to allowed users`);
