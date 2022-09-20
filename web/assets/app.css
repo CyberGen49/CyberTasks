@@ -616,6 +616,7 @@ body {
         background: rgba(0, 0, 0, 0.5);
         z-index: 8;
         scrollbar-width: none;
+        backdrop-filter: blur(8px);
     }
     #editTaskCont.visible {
         display: flex;
@@ -784,4 +785,8 @@ body {
 
 ::-webkit-scrollbar {
     background: transparent;
+}
+
+.popupCont {
+    backdrop-filter: blur(8px);
 }
