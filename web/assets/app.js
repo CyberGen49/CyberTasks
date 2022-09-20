@@ -1222,7 +1222,7 @@ async function openSettings() {
                         <div class="flex-grow">
                             <small id="allowUserCount"></small>
                         </div>
-                        <button id="allowUserRefresh" class="btn alt iconOnly">
+                        <button id="allowUserRefresh" class="btn alt iconOnly" title="Refresh allowed users list">
                             <div class="icon">refresh</div>
                         </button>
                     </div>
@@ -1257,7 +1257,7 @@ async function openSettings() {
                                 <span class="desc">ID: ${user.id}</span>
                             </div>
                         </div>
-                        <button id="${removeId}" class="btn alt small iconOnly">
+                        <button id="${removeId}" class="btn alt small iconOnly" title="Remove ${user.username}#${user.discriminator}...">
                             <div class="icon">close</div>
                         </button>
                     </div>
