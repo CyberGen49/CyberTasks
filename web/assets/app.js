@@ -244,11 +244,9 @@ const api = {
                 }]);
                 hideToast(toastId);
             });
-            //console.log(`Failed API response`, json, res);
-            return false;
+            return json || false;
         }
         const json = await res.json();
-        //console.log(`API response from ${endpoint}:`, json);
         return json;
     },
     get: (endpoint, data) => {
@@ -1111,6 +1109,227 @@ function hideEditTask() {
     }, 200);
 }
 
+async function promptSignOut() {
+    showPopup('Sign out?', `Are you sure you want to sign out? Any unsaved changes will be lost.`, [{
+        label: 'No',
+        escape: true
+    }, {
+        label: 'Yes',
+        primary: true,
+        action: async() => {
+            showToast({
+                icon: 'logout',
+                body: 'Signing out...',
+                delay: 0
+            });
+            await api.delete('me/sessions/end');
+            localStorageWipe();
+            window.location.reload();
+        }
+    }]);
+};
+
+let isSettingsOpen = false;
+async function openSettings() {
+    if (isSettingsOpen) return;
+    isSettingsOpen = true;
+    const id = showPopup(`CyberTasks Settings`, ``, [{
+        label: 'Close',
+        action: () => {
+            isSettingsOpen = false;
+        }
+    }]);
+    _id(`${id}-title`).style.paddingBottom = '18px';
+    _id(`${id}-inner`).style.width = '800px';
+    _id(`${id}-inner`).style.maxWidth = '800px';
+    _id(`${id}-body`).innerHTML = `
+        <div id="settingsCont" class="col gap-20">
+            <div class="col gap-0">
+                <h5>My account</h5>
+                <div class="col section account">
+                    <div class="row no-wrap">
+                        <img src="${_id('avatar').src}">
+                        <div class="col gap-10">
+                            <div class="col gap-3">
+                                <div class="row gap-0 no-wrap nameCont">
+                                    <span class="name">${user.name}</span>
+                                    <span class="discriminator">#${user.discriminator}</span>
+                                </div>
+                                <div class="created">Joined ${dayjs(user.id).format('MMMM Do, YYYY')}</div>
+                            </div>
+                            <div class="row gap-10">
+                                <button id="settingsSignOut" class="btn alt">
+                                    <div class="icon">logout</div>
+                                    Sign out...
+                                </button>
+                                <button class="btn changeColours hidden" style="--fgHue: 0">
+                                    <div class="icon">delete_forever</div>
+                                    Delete account...
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col gap-0 hidden">
+                <h5>Theme</h5>
+                <div class="col section exports">
+                    <p>Coming soon!</p>
+                </div>
+            </div>
+            <div class="col gap-0 hidden">
+                <h5>Manage active sessions</h5>
+                <div class="col section exports">
+                    <p>Coming soon!</p>
+                </div>
+                <small class="desc">
+                    <p>These are all of the active sessions on your account. If you see one that you don't recognize, remove it by clicking the X button, then change your Discord account password and enable 2FA if you haven't already.</p>
+                </small>
+            </div>
+            <div class="col gap-0 hidden">
+                <h5>Export your data</h5>
+                <div class="col section exports">
+                    <p>Coming soon!</p>
+                </div>
+                <small class="desc">
+                    <p>You can export a complete copy of your CyberTasks data at any time, including all lists and tasks. You'll get a zip file containing formatted JSON files for lists, tasks, and user details.</p>
+                    <p>While these exports can't be re-imported, you might find it useful to have a backup of your data.</p>
+                </small>
+            </div>
+            <div class="col gap-0 hidden">
+                <h5>API keys</h5>
+                <div class="col section keys">
+                    <p>Coming soon!</p>
+                </div>
+                <small class="desc">
+                    <p>Learn more about the CyberTasks API by visiting <a target="blank" href="/docs">the API docs</a>.</p>
+                </small>
+            </div>
+        </div>
+    `;
+    on(_id('settingsSignOut'), 'click', promptSignOut);
+    if (user.is_admin) {
+        _id('settingsCont').insertAdjacentHTML('beforeend', `
+            <h4 style="color: var(--f90)">Admin zone</h4>
+            <div class="col gap-0">
+                <h5>Manage allowed users</h5>
+                <div class="col gap-2">
+                    <div class="section row align-center">
+                        <button id="allowUserAdd" class="btn">
+                            <div class="icon">person_add</div>
+                            Add user...
+                        </button>
+                        <div class="flex-grow"></div>
+                        <button id="allowUserRefresh" class="btn alt iconOnly">
+                            <div class="icon">refresh</div>
+                        </button>
+                    </div>
+                    <div id="allowedUsersList" class="section col gap-10"></div>
+                </div>
+                <small class="desc">
+                    <p>Allow more people to use CyberTasks by adding their Discord IDs here, and remove any bad actors by clicking the X button.</p>
+                    <p>Removing users from this list will suspend their account, preventing them from logging in. Their data won't be deleted.</p>
+                </small>
+            </div>
+        `);
+        const updateAllowedUserList = async() => {
+            const allowedUsers = (await api.get('users/allowed')).users;
+            if (!_id('allowedUsersList')) return;
+            _id('allowedUsersList').innerHTML = '';
+            allowedUsers.forEach((user) => {
+                if (!_id('allowedUsersList')) return;
+                const removeId = randomHex();
+                _id('allowedUsersList').insertAdjacentHTML('beforeend', `
+                    <div class="row no-wrap align-center">
+                        <div class="userEntry flex-grow">
+                            <img class="avatar" src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64">
+                            <div class="col">
+                                <div class="nameCont">
+                                    <span id="username">${user.username}</span><span class="discriminator">#${user.discriminator}</span>
+                                    </div>
+                                <span class="desc">ID: ${user.id}</span>
+                            </div>
+                        </div>
+                        <button id="${removeId}" class="btn alt iconOnly">
+                            <div class="icon">close</div>
+                        </button>
+                    </div>
+                `);
+                on(_id(removeId), 'click', () => {
+                    showPopup(`Remove user`, `Are you sure you want to revoke <b>${user.username}#${user.discriminator}</b>'s access to CyberTasks?`, [{
+                        label: 'No',
+                        escape: true
+                    }, {
+                        label: 'Yes',
+                        primary: true,
+                        action: async() => {
+                            await api.delete('users/allowed/remove', {
+                                id: user.id
+                            });
+                            updateAllowedUserList();
+                        }
+                    }]);
+                });
+            });
+        }
+        updateAllowedUserList();
+        on(_id('allowUserAdd'), 'click', () => {
+            showPopup(`Add new user`, `
+                <p>Enter the new user's Discord ID and check to make sure it's right before adding.</p>
+                <div class="input labeled" style="width: 300px">
+                    <label>Discord user ID</label>
+                    <input id="allowNewUserInput" type="text" class="textbox">
+                </div>
+                <div id="allowUserProfileCheck" style="margin-top: 15px">
+                    Enter an ID to check the user's profile...
+                </div>
+            `, [{
+                label: 'Cancel',
+                escape: true
+            }, {
+                label: 'Add',
+                primary: true,
+                disabled: true,
+                id: 'allowUserConfirm',
+                action: async() => {
+                    const res = await api.post('users/allowed/add', {
+                        id: _id('allowNewUserInput').value
+                    });
+                    if (res.success) updateAllowedUserList();
+                }
+            }]);
+            let timeout;
+            on(_id('allowNewUserInput'), 'input', () => {
+                clearTimeout(timeout);
+                _id('allowUserConfirm').disabled = true;
+                _id('allowUserProfileCheck').innerText = `Checking...`;
+                timeout = setTimeout(async() => {
+                    const res = await api.get(`discordUserById?id=${_id('allowNewUserInput').value}`);
+                    if (res.success) {
+                        const user = res.user;
+                        _id('allowUserProfileCheck').innerHTML = `
+                        <div class="userEntry">
+                            <img class="avatar small" src="https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=64">
+                            <div class="col">
+                                ${(user.bot) ? `<span class="desc" style="color: var(--danger)">Bot user</span>`:''}
+                                <div class="nameCont">
+                                    <span id="username">${user.username}</span><span class="discriminator">#${user.discriminator}</span>
+                                </div>
+                            </div>
+                        </div>
+                        `;
+                        if (!user.bot)
+                            _id('allowUserConfirm').disabled = false;
+                    } else {
+                        _id('allowUserProfileCheck').innerText = `A user by that ID doesn't exist.`;
+                    }
+                }, 500);
+            });
+        });
+        on(_id('allowUserRefresh'), 'click', updateAllowedUserList);
+    }
+}
+
 // Run once login is successful
 async function init() {
     // Catch any uncaught errors and present them to the user
@@ -1186,33 +1405,12 @@ async function init() {
             type: 'item',
             name: 'Sign out...',
             icon: 'logout',
-            action: async() => {
-                showPopup('Sign out?', `Are you sure you want to sign out? Any unsaved changes will be lost.`, [{
-                    label: 'No',
-                    escape: true
-                }, {
-                    label: 'Yes',
-                    primary: true,
-                    action: async() => {
-                        showToast({
-                            icon: 'logout',
-                            body: 'Signing out...',
-                            delay: 0
-                        });
-                        await api.delete('me/sessions/end');
-                        localStorageWipe();
-                        window.location.reload();
-                    }
-                }]);
-            }
+            action: promptSignOut
         }, {
             type: 'item',
             name: 'Settings',
             icon: 'settings',
-            disabled: true,
-            action: () => {
-                // ...
-            }
+            action: openSettings
         }]);
     });
     // Handle creating lists
@@ -1471,6 +1669,22 @@ async function init() {
             refresh();
         }
     }, 1000);
+    // Show the private beta notice
+    if (!localStorageObjGet('seenBetaNotice')) {
+        showPopup(`Hey`, `
+            <p>Thanks for trying out CyberTasks!</p>
+            <p>Keep in mind that this project is a private beta and you've been granted special access.</p>
+            <p>This project isn't available to the public yet because it needs to be thoroughly tested by real users like you. With that said, please be mindful of your usage and don't intentionally spam or abuse the platform or API. This kind of abuse will result in the suspension of your account.</p>
+            <p>CyberTasks is under active development, so things could change or disappear at any time. Development happens on a separate server, so changes should only appear when they're in a completed state.</p>
+            <p>Your feedback is extremely important during this phase, so if you run into any bugs or have features that you'd like to request, <a target="_blank" href="/discord">join our Discord server</a> and let us know!</p>
+        `, [{
+            label: 'Okay',
+            primary: true,
+            action: () => {
+                localStorageObjSet('seenBetaNotice', true);
+            }
+        }]);
+    }
     // Fetch lists
     await updateLists();
     Sortable.create(_id('lists'), {
@@ -1504,22 +1718,6 @@ async function init() {
     const lastActiveList = localStorageObjGet('activeList');
     if (lists.length > 0)
         changeActiveList(listsById(lastActiveList.id) || lists[1]);
-    // Show the private beta notice
-    if (!localStorageObjGet('seenBetaNotice')) {
-        showPopup(`Hey`, `
-            <p>Thanks for trying out CyberTasks!</p>
-            <p>Keep in mind that this project is a private beta and you've been granted special access.</p>
-            <p>This project isn't available to the public yet because it needs to be thoroughly tested by real users like you. With that said, please be mindful of your usage and don't intentionally spam or abuse the platform or API. This kind of abuse will result in the suspension of your account.</p>
-            <p>CyberTasks is under active development, so things could change or disappear at any time. Development happens on a separate server, so changes should only appear when they're in a completed state.</p>
-            <p>Your feedback is extremely important during this phase, so if you run into any bugs or have features that you'd like to request, <a target="_blank" href="/discord">join our Discord server</a> and let us know!</p>
-        `, [{
-            label: 'Okay',
-            primary: true,
-            action: () => {
-                localStorageObjSet('seenBetaNotice', true);
-            }
-        }]);
-    }
 }
 
 // Register the service worker

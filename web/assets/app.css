@@ -136,25 +136,38 @@ body {
     background: var(--b25);
     border-radius: 12px;
     padding: 10px 12px;
-    color: var(--b60);
-    font-size: 15px;
 }
-#sidebar .profileCard #avatar {
-    display: inline;
-    height: 48px;
-    width: 48px;
+.userEntry {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    line-height: 1;
+}
+.userEntry .avatar {
+    --w: 48px;
+    height: var(--w);
+    width: var(--w);
     border-radius: 50%;
     user-select: none;
 }
-#sidebar .profileCard .nameCont {
-    font-size: 16px;
+.userEntry > .col {
+    gap: 4px;
+}
+.userEntry .avatar.small {
+    --w: 36px;
+}
+.userEntry .nameCont {
     color: var(--b100);
 }
-#sidebar .profileCard .nameCont span {
+.userEntry .nameCont {
     word-break: break-word;
 }
-#sidebar .profileCard .nameCont #discriminator {
+.userEntry .nameCont .discriminator {
     color: var(--b70);
+}
+.userEntry .desc {
+    font-size: 15px;
+    color: var(--b60);
 }
 
 @media screen and (max-width: 1100px) {
@@ -702,6 +715,48 @@ body {
     font-size: 20px;
     font-weight: 600;
     color: var(--f90);
+}
+
+#settingsCont > .col > .desc {
+    padding-top: 8px;
+}
+#settingsCont .section {
+    padding: 15px;
+    background: var(--b20);
+    border-radius: 8px;
+}
+#settingsCont .section:first-of-type {
+    border-top-left-radius: 20px;
+    border-top-right-radius: 20px;
+}
+#settingsCont .section:last-of-type {
+    border-bottom-left-radius: 20px;
+    border-bottom-right-radius: 20px;
+}
+#settingsCont .account img {
+    --w: 110px;
+    width: var(--w);
+    height: var(--w);
+    border-radius: calc(var(--w) / 2);
+}
+@media screen and (max-width: 450px) {
+    #settingsCont .account img {
+        --w: 64px;
+    }
+}
+#settingsCont .account .nameCont {
+    font-family: 'Quicksand';
+    font-size: 22px;
+    font-weight: bold;
+}
+#settingsCont .account .nameCont span {
+    word-break: break-word;
+}
+#settingsCont .account .nameCont .discriminator {
+    color: var(--b60);
+}
+#settingsCont .account .created {
+    color: var(--b70);
 }
 
 .hueCircle {

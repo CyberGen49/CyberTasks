@@ -273,6 +273,10 @@ const types = {
             name: 'is_new',
             type: 'int',
             desc: `(Currently unused) If the user is new or not. Possible values are <code>0</code> or <code>1</code>.`
+        }, {
+            name: 'is_admin',
+            type: 'int',
+            desc: `(Currently unused) If the user is an admin. Possible values are <code>0</code> or <code>1</code>.`
         }]
     },
     list: {

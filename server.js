@@ -137,7 +137,8 @@ if (credentials.bot_token && credentials.audits_channel) {
     bot = new Discord.Client({ intents: [
         Discord.GatewayIntentBits.Guilds,
         Discord.GatewayIntentBits.GuildMessages,
-        Discord.GatewayIntentBits.MessageContent
+        Discord.GatewayIntentBits.MessageContent,
+        Discord.GatewayIntentBits.GuildMembers
     ] });
     bot.on('ready', () => {
         console.log(`Audit logging bot is ready!`);
@@ -186,6 +187,23 @@ function send_audit(user, msg, type = 0) {
     ] });
 }
 
+// Fetches any Discord user by their ID
+let discordUserCache = {};
+async function getDiscordUserById(id) {
+    if (discordUserCache[id] && (Date.now()-discordUserCache[id].created) < (1000*60*60*24))
+        return discordUserCache[id];
+    const res = await fetch(`https://discord.com/api/v9/users/${id}`, {
+        headers: {
+            Authorization: `Bot ${credentials.bot_token}`
+        }
+    });
+    if (!res.ok) return false;
+    const user = await res.json();
+    discordUserCache[id] = user;
+    discordUserCache[id].created = Date.now();
+    return user;
+}
+
 // Sets the API endpoints scope to be used with API keys
 const setScope = (scope) => {
     return (req, res, next) => {
@@ -196,13 +214,13 @@ const setScope = (scope) => {
 
 // Gets the active user from the provided access token or API key
 // and binds the user object to the request
-const get_active_user = (req, res, next) => {
+const get_user = (req, res, next) => {
     const token = req.headers['cybertasks-token'];
     const key = req.headers['cybertasks-key'];
     if (token) {
         const tokenEntry = res.db.prepare('SELECT * FROM auth WHERE token = ?').get(token);
         if (token && tokenEntry && (Date.now()-tokenEntry.last_seen) < (1000*60*60*24*30)) {
-            res.db.prepare('UPDATE auth SET last_seen = ? WHERE token = ?').run(Date.now(), tokenEntry.token);
+            res.db.prepare('UPDATE auth SET last_seen = ?, ua = ?, ip = ? WHERE token = ?').run(Date.now(), req.ua, req.clientIP, tokenEntry.token);
             const tokenOwnerId = tokenEntry.owner;
             req.user = res.db.prepare('SELECT * FROM users WHERE id = ?').get(tokenOwnerId);
             req.token = token;
@@ -213,6 +231,14 @@ const get_active_user = (req, res, next) => {
         // ...
     } else {
         res.json_end_error('accessDenied', `Missing access token or API key.`, 403);
+    }
+    return next();
+};
+
+// Makes sure the user is an admin before continuing
+const check_admin = (req, res, next) => {
+    if (!req.user.is_admin) {
+        return res.json_end_error('accessDenied', `Only admins can use this API endpoint.`, 403);
     }
     return next();
 };
@@ -257,61 +283,108 @@ srv.get('/api/discordInfo', (req, res) => {
     res.out.redirect_url = credentials.redirect_url;
     res.json_end();
 });
+// Get IP location information
+srv.get('/api/ipLookup', async(req, res) => {
+    const ip = req.query.get('ip');
+    if (!req.is_param_valid(ip, true)) return;
+    res.out.response = await (await fetch(`http://ip-api.com/json/${ip}`)).json();
+    res.json_end();
+});
 // Get current user object
-srv.get('/api/me', setScope('me'), get_active_user, (req, res) => {
+srv.get('/api/me', setScope('me'), get_user, (req, res) => {
     res.out.user = req.user;
     res.json_end();
 });
 // Delete the current user and all of its data
-srv.post('/api/me/delete', get_active_user, (req, res) => {
+srv.post('/api/me/delete', get_user, (req, res) => {
     res.json_end_error('notImplemented', `This endpoint isn't implemented yet!`, 501);
 });
 // Export user data to a zip file and save a link to it
-srv.post('/api/me/export', get_active_user, (req, res) => {
+srv.post('/api/me/export', get_user, (req, res) => {
     res.json_end_error('notImplemented', `This endpoint isn't implemented yet!`, 501);
 });
 // Get API keys
-srv.get('/api/me/keys', get_active_user, (req, res) => {
+srv.get('/api/me/keys', get_user, (req, res) => {
     res.json_end_error('notImplemented', `This endpoint isn't implemented yet!`, 501);
 });
 // Create API key
-srv.post('/api/me/keys/create', get_active_user, (req, res) => {
+srv.post('/api/me/keys/create', get_user, (req, res) => {
     res.json_end_error('notImplemented', `This endpoint isn't implemented yet!`, 501);
 });
 // Edit API key
-srv.put('/api/me/keys/edit', get_active_user, (req, res) => {
+srv.put('/api/me/keys/edit', get_user, (req, res) => {
     res.json_end_error('notImplemented', `This endpoint isn't implemented yet!`, 501);
 });
 // Delete API key
-srv.delete('/api/me/keys/delete', get_active_user, (req, res) => {
+srv.delete('/api/me/keys/delete', get_user, (req, res) => {
     res.json_end_error('notImplemented', `This endpoint isn't implemented yet!`, 501);
 });
 // Get active sessions
-srv.get('/api/me/sessions', get_active_user, (req, res) => {
+srv.get('/api/me/sessions', get_user, (req, res) => {
     res.json_end_error('notImplemented', `This endpoint isn't implemented yet!`, 501);
 });
 // End the current session
-srv.delete('/api/me/sessions/end', get_active_user, (req, res) => {
+srv.delete('/api/me/sessions/end', get_user, (req, res) => {
     res.db.prepare('DELETE FROM auth WHERE token = ? AND owner = ?').run(req.token, req.user.id);
     res.json_end();
     send_audit(req.user, `ended a session`);
 });
-// Search users
-srv.get('/api/users/search', get_active_user, (req, res) => {
-    res.json_end_error('notImplemented', `This endpoint isn't implemented yet!`, 501);
+// Get Discord user by ID
+srv.get('/api/discordUserById', get_user, check_admin, async(req, res) => {
+    const id = req.query.get('id');
+    if (!req.is_param_valid(id, true)) return;
+    const user = await getDiscordUserById(id);
+    if (!req.is_param_valid(user, true)) return;
+    res.out.user = user;
+    res.json_end();
 });
-// Allow a Discord ID to access CyberTasks
-srv.delete('/api/users/access/allow', get_active_user, (req, res) => {
+// Get all allowed Discord users
+srv.get('/api/users/allowed', get_user, check_admin, async(req, res) => {
+    res.out.allowed_ids = require('./allowedUsers.json');
+    res.out.users = [];
+    for (const id of res.out.allowed_ids) {
+        let user = { id: id };
+        if (bot) user = await getDiscordUserById(id);
+        res.out.users.push(user);
+    }
+    res.json_end();
+});
+// Allow a Discord user to access CyberTasks
+srv.post('/api/users/allowed/add', get_user, check_admin, async(req, res) => {
+    const id = req.body.id.toString();
+    if (!req.is_param_valid(id, true)) return;
+    const user = await getDiscordUserById(id);
+    if (!req.is_param_valid(user, true)) return;
+    let allowedUsers = require('./allowedUsers.json');
+    allowedUsers.push(id);
+    fs.writeFileSync('./allowedUsers.json', JSON.stringify(allowedUsers, null, 4));
+    res.json_end();
+    send_audit(req.user, `added [**${user.username}#${user.discriminator}**](https://discordlookup.com/user/${user.discord_id}) to allowed users`);
+});
+// Remove an allowed user
+srv.delete('/api/users/allowed/remove', get_user, check_admin, async(req, res) => {
+    const id = req.body.id.toString();
+    if (!req.is_param_valid(id, true)) return;
+    const user = await getDiscordUserById(id);
+    let allowedUsers = require('./allowedUsers.json');
+    const index = allowedUsers.indexOf(id);
+    if (index > -1) allowedUsers.splice(index, 1);
+    fs.writeFileSync('./allowedUsers.json', JSON.stringify(allowedUsers, null, 4));
+    res.json_end();
+    send_audit(req.user, `removed [**${user.username}#${user.discriminator}**](https://discordlookup.com/user/${user.discord_id}) from allowed users`, 2);
+});
+// Search users
+srv.get('/api/users/search', get_user, (req, res) => {
     res.json_end_error('notImplemented', `This endpoint isn't implemented yet!`, 501);
 });
 // Get lists
-srv.get('/api/lists', get_active_user, (req, res) => {
+srv.get('/api/lists', get_user, (req, res) => {
     res.out.lists = getLists(res.db, req.user);
     res.out.folders = getFolders(res.db, req.user);
     res.json_end();
 });
 // Sort sidebar
-srv.put('/api/lists/sort', get_active_user, (req, res) => {
+srv.put('/api/lists/sort', get_user, (req, res) => {
     const order = req.body.order;
     if (!req.is_param_valid(order, order.length)) return;
     let i = 1;
@@ -335,7 +408,7 @@ srv.put('/api/lists/sort', get_active_user, (req, res) => {
     res.json_end();
 });
 // Create list
-srv.post('/api/lists/create', get_active_user, (req, res) => {
+srv.post('/api/lists/create', get_user, (req, res) => {
     const name = req.body.name;
     const hue = req.body.hue;
     if (!req.is_param_valid(name, (name.length > 0 && name.length < 64)))
@@ -348,7 +421,7 @@ srv.post('/api/lists/create', get_active_user, (req, res) => {
     send_audit(req.user, `created a list`);
 });
 // Edit list
-srv.put('/api/lists/:id/edit', get_active_user, (req, res) => {
+srv.put('/api/lists/:id/edit', get_user, (req, res) => {
     const id = req.params.id;
     const name = req.body.name;
     const hue = req.body.hue;
@@ -361,7 +434,7 @@ srv.put('/api/lists/:id/edit', get_active_user, (req, res) => {
     res.json_end();
 });
 // Delete list
-srv.delete('/api/lists/:id/delete', get_active_user, (req, res) => {
+srv.delete('/api/lists/:id/delete', get_user, (req, res) => {
     const id = req.params.id;
     if (!req.is_param_valid(id, res.db.prepare('SELECT id FROM lists WHERE owner = ? AND id = ?').get(req.user.id, id))) return;
     // Delete list entry
@@ -383,7 +456,7 @@ srv.delete('/api/lists/:id/delete', get_active_user, (req, res) => {
     send_audit(req.user, `deleted a list containing ${tasks.length} task(s) with ${stepsCount} step(s)`, 2);
 });
 // Create list folder
-srv.post('/api/lists/folders/create', get_active_user, (req, res) => {
+srv.post('/api/lists/folders/create', get_user, (req, res) => {
     const name = req.body.name;
     if (!req.is_param_valid(name, (name.length > 0 && name.length < 64)))
         return;
@@ -394,7 +467,7 @@ srv.post('/api/lists/folders/create', get_active_user, (req, res) => {
     send_audit(req.user, `created a list category`);
 });
 // Edit list folder
-srv.put('/api/lists/folders/:id/edit', get_active_user, (req, res) => {
+srv.put('/api/lists/folders/:id/edit', get_user, (req, res) => {
     const id = req.params.id;
     const name = req.body.name;
     if (!req.is_param_valid(id, res.db.prepare('SELECT id FROM list_folders WHERE owner = ? AND id = ?').get(req.user.id, id))) return;
@@ -405,7 +478,7 @@ srv.put('/api/lists/folders/:id/edit', get_active_user, (req, res) => {
     res.json_end();
 });
 // Delete list folder
-srv.delete('/api/lists/folders/:id/delete', get_active_user, (req, res) => {
+srv.delete('/api/lists/folders/:id/delete', get_user, (req, res) => {
     const id = req.params.id;
     if (!req.is_param_valid(id, res.db.prepare('SELECT id FROM list_folders WHERE owner = ? AND id = ?').get(req.user.id, id))) return;
     res.db.prepare('DELETE FROM list_folders WHERE id = ? AND owner = ?').run(id, req.user.id);
@@ -413,7 +486,7 @@ srv.delete('/api/lists/folders/:id/delete', get_active_user, (req, res) => {
     send_audit(req.user, `deleted a list category`, 2);
 });
 // Get list pending tasks
-srv.get('/api/lists/:id/tasks/pending', get_active_user, (req, res) => {
+srv.get('/api/lists/:id/tasks/pending', get_user, (req, res) => {
     const listId = req.params.id;
     if (!req.is_param_valid(listId, res.db.prepare('SELECT id FROM lists WHERE owner = ? AND id = ?').get(req.user.id, listId))) return;
     res.out.tasks = getTasks(res.db, req.user, {
@@ -423,7 +496,7 @@ srv.get('/api/lists/:id/tasks/pending', get_active_user, (req, res) => {
     res.json_end();
 });
 // Get list complete tasks
-srv.get('/api/lists/:id/tasks/complete', get_active_user, (req, res) => {
+srv.get('/api/lists/:id/tasks/complete', get_user, (req, res) => {
     const listId = req.params.id;
     if (!req.is_param_valid(listId, res.db.prepare('SELECT id FROM lists WHERE owner = ? AND id = ?').get(req.user.id, listId))) return;
     res.out.tasks = getTasks(res.db, req.user, {
@@ -433,26 +506,26 @@ srv.get('/api/lists/:id/tasks/complete', get_active_user, (req, res) => {
     res.json_end();
 });
 // Get global upcoming and past due tasks
-srv.get('/api/tasks/upcoming', get_active_user, (req, res) => {
+srv.get('/api/tasks/upcoming', get_user, (req, res) => {
     const days = parseInt(req.query.get('days')) || 7;
     if (!req.is_param_valid(days, (days > 0 && days <= 90))) return;
     res.out.tasks = getTasks(res.db, req.user, { days: days });
     res.json_end();
 });
 // Get list collaborators
-srv.get('/api/lists/:id/users', get_active_user, (req, res) => {
+srv.get('/api/lists/:id/users', get_user, (req, res) => {
     res.json_end_error('notImplemented', `This endpoint isn't implemented yet!`, 501);
 });
 // Add list collaborators
-srv.post('/api/lists/:id/users/add', get_active_user, (req, res) => {
+srv.post('/api/lists/:id/users/add', get_user, (req, res) => {
     res.json_end_error('notImplemented', `This endpoint isn't implemented yet!`, 501);
 });
 // Remove list collaborators
-srv.delete('/api/lists/:id/users/remove', get_active_user, (req, res) => {
+srv.delete('/api/lists/:id/users/remove', get_user, (req, res) => {
     res.json_end_error('notImplemented', `This endpoint isn't implemented yet!`, 501);
 });
 // Change list sort order
-srv.put('/api/lists/:id/tasks/sort', get_active_user, (req, res) => {
+srv.put('/api/lists/:id/tasks/sort', get_user, (req, res) => {
     const id = req.params.id;
     const order = req.query.get('order');
     const reverse = (req.query.get('reverse') === 'true') ? 1 : 0;
@@ -464,7 +537,7 @@ srv.put('/api/lists/:id/tasks/sort', get_active_user, (req, res) => {
     res.json_end();
 });
 // Create task
-srv.post('/api/lists/:id/tasks/create', get_active_user, (req, res) => {
+srv.post('/api/lists/:id/tasks/create', get_user, (req, res) => {
     const listId = req.params.id;
     const name = req.body.name;
     if (!req.is_param_valid(listId, res.db.prepare('SELECT id FROM lists WHERE owner = ? AND id = ?').get(req.user.id, listId))) return;
@@ -477,7 +550,7 @@ srv.post('/api/lists/:id/tasks/create', get_active_user, (req, res) => {
     send_audit(req.user, `created a task`);
 });
 // Edit task
-srv.put('/api/tasks/:id/edit', get_active_user, (req, res) => {
+srv.put('/api/tasks/:id/edit', get_user, (req, res) => {
     const id = req.params.id;
     const entry = res.db.prepare(`SELECT * FROM tasks WHERE owner = ? AND id = ?`).get(req.user.id, id);
     if (!req.is_param_valid(id, entry)) return;
@@ -502,7 +575,7 @@ srv.put('/api/tasks/:id/edit', get_active_user, (req, res) => {
     res.json_end();
 });
 // Toggle task completion status
-srv.put('/api/tasks/:id/toggleComplete', get_active_user, (req, res) => {
+srv.put('/api/tasks/:id/toggleComplete', get_user, (req, res) => {
     const id = req.params.id;
     const entry = res.db.prepare(`SELECT id, list_id, is_complete FROM tasks WHERE owner = ? AND id = ?`).get(req.user.id, id)
     if (!req.is_param_valid(id, entry)) return;
@@ -520,15 +593,15 @@ srv.put('/api/tasks/:id/toggleComplete', get_active_user, (req, res) => {
     res.json_end();
 });
 // Move task to another list
-srv.put('/api/tasks/:id/move', get_active_user, (req, res) => {
+srv.put('/api/tasks/:id/move', get_user, (req, res) => {
     res.json_end_error('notImplemented', `This endpoint isn't implemented yet!`, 501);
 });
 // Duplicate task
-srv.get('/api/tasks/:id/duplicate', get_active_user, (req, res) => {
+srv.get('/api/tasks/:id/duplicate', get_user, (req, res) => {
     res.json_end_error('notImplemented', `This endpoint isn't implemented yet!`, 501);
 });
 // Delete task
-srv.delete('/api/tasks/:id/delete', get_active_user, (req, res) => {
+srv.delete('/api/tasks/:id/delete', get_user, (req, res) => {
     const id = req.params.id;
     const entry = res.db.prepare(`SELECT list_id, is_complete FROM tasks WHERE owner = ? AND id = ?`).get(req.user.id, id);
     if (!req.is_param_valid(id, entry)) return;
@@ -547,7 +620,7 @@ srv.delete('/api/tasks/:id/delete', get_active_user, (req, res) => {
     send_audit(req.user, `deleted a task with ${stepsCount} step(s)`, 2);
 });
 // Create task step
-srv.post('/api/tasks/:id/steps/create', get_active_user, (req, res) => {
+srv.post('/api/tasks/:id/steps/create', get_user, (req, res) => {
     const taskId = req.params.id;
     const name = req.body.name;
     if (!req.is_param_valid(taskId, res.db.prepare('SELECT id FROM tasks WHERE owner = ? AND id = ?').get(req.user.id, taskId))) return;
@@ -560,7 +633,7 @@ srv.post('/api/tasks/:id/steps/create', get_active_user, (req, res) => {
     send_audit(req.user, `added a task step`);
 });
 // Edit task step
-srv.put('/api/steps/:id/edit', get_active_user, (req, res) => {
+srv.put('/api/steps/:id/edit', get_user, (req, res) => {
     const id = req.params.id;
     const name = req.body.name;
     const entry = res.db.prepare(`SELECT id, task_id, is_complete FROM task_steps WHERE owner = ? AND id = ?`).get(req.user.id, id);
@@ -571,7 +644,7 @@ srv.put('/api/steps/:id/edit', get_active_user, (req, res) => {
     res.json_end();
 });
 // Toggle task step completion status
-srv.put('/api/steps/:id/toggleComplete', get_active_user, (req, res) => {
+srv.put('/api/steps/:id/toggleComplete', get_user, (req, res) => {
     const id = req.params.id;
     const entry = res.db.prepare(`SELECT id, task_id, is_complete FROM task_steps WHERE owner = ? AND id = ?`).get(req.user.id, id);
     if (!req.is_param_valid(id, entry)) return;
@@ -582,7 +655,7 @@ srv.put('/api/steps/:id/toggleComplete', get_active_user, (req, res) => {
     res.json_end();
 });
 // Delete task step
-srv.delete('/api/steps/:id/delete', get_active_user, (req, res) => {
+srv.delete('/api/steps/:id/delete', get_user, (req, res) => {
     const id = req.params.id;
     const entry = res.db.prepare(`SELECT id, task_id, is_complete FROM task_steps WHERE owner = ? AND id = ?`).get(req.user.id, id);
     if (!req.is_param_valid(id, entry)) return;
@@ -592,7 +665,7 @@ srv.delete('/api/steps/:id/delete', get_active_user, (req, res) => {
     send_audit(req.user, `deleted a task step`, 2);
 });
 // Sort task steps
-srv.put('/api/tasks/:id/steps/sort', get_active_user, (req, res) => {
+srv.put('/api/tasks/:id/steps/sort', get_user, (req, res) => {
     const id = req.params.id;
     const order = req.body.order;
     if (!req.is_param_valid(id, res.db.prepare('SELECT id FROM tasks WHERE owner = ? AND id = ?').get(req.user.id, id))) return;
@@ -642,8 +715,8 @@ srv.get('/discord-login', async(req, res) => {
     // Respond with an error if this Discord account isn't approved
     // and if it doesn't already exist in the database
     if (!credentials.allow_new_users && !storedUser) {
-        const approvedIds = JSON.parse(fs.readFileSync('./allowedUsers.json', 'utf-8'));
-        if (!approvedIds.includes(resUser.id.toString()))
+        const allowedIds = require('./allowedUsers.json');
+        if (!allowedIds.includes(resUser.id.toString()))
             return res.status(403).json({ error: 'notApproved' });
     }
     // Save the current timestamp to use as a new user ID
