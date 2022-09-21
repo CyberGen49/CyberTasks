@@ -658,6 +658,7 @@ const sortOrderNames = {
 }
 function changeActiveList(list, force = false) {
     clearTimeout(changeListTimeout);
+    if (!list.name) return;
     // Force force if the current hour has changed
     // This is to make sure our relative due dates are up to date
     if (lastSyncHour !== dayjs().format('H')) {
@@ -1664,17 +1665,32 @@ async function init() {
         update: () => { localStorageObjSet('lastRefresh', { time: Date.now() }) }
     }
     const refresh = async() => {
-        if (user.id && activeList) {
+        if (user.id && activeList && (Date.now()-lastRefresh.get()) > (1000*2)) {
             lastRefresh.update();
+            const toastId = showToast({
+                icon: 'sync',
+                body: `Syncing...`,
+                delay: 0, noClose: true, iconSpin: true
+            });
             await updateLists();
-            changeActiveList(listsById(activeList.id), true);
+            await changeActiveList(listsById(activeList.id), true);
+            hideToast(toastId);
         }
     }
     lastRefresh.update();
+    // Run refresh when the window regains focus or becomes visible
+    on(window, 'focus', refresh);
+    on(document, 'visibilitychange', () => {
+        if (document.visibilityState == 'visible') refresh();
+    });
+    // Keep a running clock and update it every second
+    let clock = Date.now();
     setInterval(() => {
-        if ((Date.now()-lastRefresh.get()) > (1000*30) && document.visibilityState == 'visible') {
-            refresh();
-        }
+        // Run refresh if it's been over 3 seconds since the clock updated
+        // We can use this to determine if the app has been "suspended"
+        // without being reloaded
+        if (Date.now()-clock > 3000) refresh();
+        clock = Date.now();
     }, 1000);
     // Show the private beta notice
     if (!localStorageObjGet('seenBetaNotice')) {
@@ -1723,8 +1739,7 @@ async function init() {
     });
     // Select the last active list or the top list
     const lastActiveList = localStorageObjGet('activeList');
-    if (lists.length > 0)
-        changeActiveList(listsById(lastActiveList.id) || lists[1]);
+    changeActiveList(listsById(lastActiveList.id) || lists[1] || lists[0]);
 }
 
 // Register the service worker
