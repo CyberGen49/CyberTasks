@@ -120,6 +120,10 @@ body {
     text-shadow: 0px 2px 5px rgba(0, 0, 0, 0.5);
     text-align: center;
 }
+#sidebar .top .title span {
+    font-size: 16px;
+    color: var(--b70);
+}
 #sidebarDimming {
     position: fixed;
     top: 0px;
@@ -356,7 +360,9 @@ body {
 }
 #listScrollArea {
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 10px 15px;
+    scroll-behavior: smooth;
 }
 #tasksCont {
     height: 100%;
@@ -421,8 +427,14 @@ body {
     background: var(--b20);
     border-radius: 8px;
     --endRad: 20px;
-    transition: 0.1s ease-in-out;
+    transition: 0.1s var(--bezier);
     user-select: none;
+}
+#tasksCont .tasks .task:not(.complete).completeAni {
+    transition: 0.2s var(--bezier);
+    scale: 1.3;
+    opacity: 0;
+    pointer-events: none;
 }
 #tasksCont .tasks .task:first-child {
     border-top-left-radius: var(--endRad);

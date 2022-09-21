@@ -1,5 +1,6 @@
 
 let user = {};
+let isDev = false;
 let token;
 const baseTitle = document.title;
 const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
@@ -32,6 +33,7 @@ window.addEventListener('load', async() => {
         })).json();
         if (res.success) {
             user = res.user;
+            isDev = res.is_dev;
             token = auth.token;
             localStorageObjSet('user', user);
             _id('login').style.display = 'none';
@@ -498,6 +500,7 @@ function showTask(task) {
                         if (res.success) {
                             _id(id).remove();
                             if (activeTask.id == task.id) hideEditTask();
+                            checkListEmpty();
                         } else _id(id).style.display = '';
                     }
                 }]);
@@ -547,6 +550,8 @@ function showTask(task) {
         showContext(data);
     });
     const onComplete = async() => {
+        _id(id).classList.add('completeAni');
+        await sleep(200);
         _id(id).style.display = 'none';
         const res = await api.put(`tasks/${task.id}/toggleComplete`);
         if (res.success) {
@@ -556,7 +561,10 @@ function showTask(task) {
                 showTask(res.task);
                 changeActiveList(activeList);
             }
-        } else _id(id).style.display = '';
+        } else {
+            _id(id).style.display = '';
+            _id(id).classList.remove('completeAni');
+        }
     };
     on(_id(`${id}-radio`), 'click', (e) => {
         e.stopPropagation();
@@ -1371,6 +1379,10 @@ async function init() {
     _id('avatar').src = `https://cdn.discordapp.com/avatars/${user.discord_id}/${user.picture}.png?size=512`;
     _id('username').innerText = user.name;
     _id('discriminator').innerText = `#${user.discriminator}`;
+    // Show sidebar dev splash if needed
+    if (isDev) {
+        _id('sidebarTitleDev').classList.remove('hidden');
+    }
     // Handle account context menu
     on(_id('accountContext'), 'click', () => {
         showContext([{
@@ -1513,9 +1525,19 @@ async function init() {
             name: value
         });
         if (res.success) {
+            tasks.push(res.task);
             showTask(res.task);
             sortTasks();
-            tasks.push(res.task);
+            const el = _qs(`.task[data-id="${res.task.id}"]`,
+            _id('tasks'));
+            el.scrollIntoView();
+            el.style.transitionDuration = '0.6s';
+            await sleep(50);
+            el.style.background = 'var(--b30)';
+            await sleep(1000);
+            el.style.background = '';
+            await sleep(600);
+            el.style.transitionDuration = '';
         }
     });
     // Handle the edit list button

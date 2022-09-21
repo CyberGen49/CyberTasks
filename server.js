@@ -293,6 +293,7 @@ srv.get('/api/ipLookup', async(req, res) => {
 // Get current user object
 srv.get('/api/me', setScope('me'), get_user, (req, res) => {
     res.out.user = req.user;
+    res.out.is_dev = isDev;
     res.json_end();
 });
 // Delete the current user and all of its data
