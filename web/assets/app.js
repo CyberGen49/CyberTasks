@@ -99,6 +99,7 @@ function showToast(opts = showToastOpts()) {
         hideToast(id);
     });
     toastTimeout = setTimeout(() => {
+        if (!_id(id)) return;
         _id(id).classList.add('visible');
         if (opts.delay) {
             toastTimeout = setTimeout(() => {
@@ -1073,6 +1074,15 @@ async function editTask(task, stayOpen = false) {
     if (task.id == activeTask.id && !stayOpen)
         return hideEditTask();
     activeTask = task;
+    _id('editTaskCont').classList.remove('changeColours');
+    _id('editTaskListNameCont').classList.add('hidden');
+    if (activeList.id == 'schedule') {
+        const list = listsById(task.list_id);
+        _id('editTaskCont').classList.add('changeColours');
+        _id('editTaskCont').style.setProperty('--fgHue', list.hue);
+        _id('editTaskListNameCont').classList.remove('hidden');
+        _id('editTaskListName').innerText = list.name;
+    }
     _id('editTaskRadio').classList.remove('complete');
     if (_id('editTaskName').innerText !== task.name) {
         _id('editTaskName').blur();

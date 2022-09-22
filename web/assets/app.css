@@ -645,17 +645,26 @@ body {
     }
 }
 #editTaskCard .topbar {
-    margin-bottom: 8px;
+    margin-top: -10px;
+    padding: 10px 0px;
+    user-select: none;
+}
+#editTaskCard .topbar .title {
+    word-break: break-word;
     font-family: 'Quicksand';
     font-size: 24px;
     font-weight: bold;
     color: var(--f90);
-    user-select: none;
 }
-#editTaskCard .topbar .title {
-    overflow: hidden;
-    white-space: nowrap;
-    word-break: break-word;
+#editTaskCard .topbar .title .listName {
+    margin-bottom: -5px;
+    font-size: 16px;
+    font-family: 'Poppins';
+    font-weight: normal;
+}
+#editTaskCard .topbar .title .listName .icon {
+    font-family: 'Material Symbols';
+    font-size: 24px;
 }
 #editTaskCard .section {
     padding: 15px 10px;
