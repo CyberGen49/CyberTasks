@@ -702,7 +702,8 @@ function changeActiveList(list, force = false) {
         _id('listEdit').style.display = '';
         _id('addTaskCont').style.display = '';
         _id('sortTasks').disabled = false;
-        if (list.id == 'schedule') {
+        const isSchedule = (list.id == 'schedule');
+        if (isSchedule) {
             _id('listEdit').style.display = 'none';
             _id('addTaskCont').style.display = 'none';
             _id('sortTasks').disabled = true;
@@ -738,7 +739,7 @@ function changeActiveList(list, force = false) {
         resTasks = res.tasks;
         // If completed tasks are shown, fetch those and combine them with
         // the pending tasks
-        if (showCompleted && list.id != 'schedule') {
+        if (showCompleted && !isSchedule) {
             const res = await api.get(`lists/${list.id}/tasks/complete`);
             if (!res.success) {
                 _id('tasksComplete').innerHTML = `
@@ -778,6 +779,10 @@ function changeActiveList(list, force = false) {
         }
         if (list.count_complete > 0) _id('showCompleted').style.display = '';
         _id('listScrollArea').dispatchEvent(new Event('scroll'));
+        // Focus the add task box
+        if (!isSchedule && !document.body.classList.contains('isTouch')) {
+            _id('inputNewTaskName').focus();
+        }
     }, ((isSameList) ? 0 : 200));
 }
 
@@ -1696,6 +1701,7 @@ async function init() {
             });
             await updateLists();
             await changeActiveList(listsById(activeList.id), true);
+            await sleep(200);
             hideToast(toastId);
         }
     }

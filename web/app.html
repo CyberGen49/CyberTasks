@@ -114,14 +114,17 @@
                             <div id="tasksComplete" class="tasks"></div>
                             <div class="flex-grow"></div>
                         </div>
-                        <div id="addTaskCont" class="row align-center gap-10 no-wrap flex-grow" style="align-items: flex-end;">
-                            <div id="addTaskBox" class="flex-grow">
-                                <div class="radio"></div>
-                                <div id="inputNewTaskName" class="input flex-grow" contenteditable="true" tabindex="0" placeholder="Add a new task..."></div>
+                        <div class="flex-grow"></div>
+                        <div id="addTaskCont">
+                            <div class="row align-center gap-10 no-wrap">
+                                <div id="addTaskBox" class="flex-grow">
+                                    <div class="radio"></div>
+                                    <div id="inputNewTaskName" class="input flex-grow" contenteditable="true" tabindex="0" placeholder="Add a new task..."></div>
+                                </div>
+                                <button id="addTask" class="btn large iconOnly no-shrink" title="Add task" disabled>
+                                    <div class="icon">add</div>
+                                </button>
                             </div>
-                            <button id="addTask" class="btn large iconOnly no-shrink" title="Add task" disabled>
-                                <div class="icon">add</div>
-                            </button>
                         </div>
                     </div>
                     <div id="editTaskCont" class="no-shrink">
@@ -166,6 +169,7 @@
                                 <div class="label no-select">Notes</div>
                                 <div id="editTaskDesc" class="desc" placeholder="Add additional notes to this task..." contenteditable tabindex="0"></div>
                             </div>
+                            <span style="height: 1px; margin-top: -2px" class="no-select">&nbsp;</span>
                         </div>
                     </div>
                 </div>
