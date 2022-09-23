@@ -456,7 +456,7 @@ function showTask(task) {
         <button id="${id}" class="task ${(task.is_complete) ? 'complete':''}" data-id="${task.id}" data-due-time="${task.due_date_time}">
             <div id="${id}-radio" class="radio" tabindex="0" title="Mark task as ${(task.is_complete) ? 'in':''}complete"></div>
             <div class="label">
-                ${(activeList.id == 'schedule') ? `<div class="desc changeColours" style="--fgHue: ${listsById(task.list_id).hue}; color: var(--f80)">
+                ${(activeList.id == 'schedule') ? `<div class="desc changeColours listName" style="--fgHue: ${listsById(task.list_id).hue}">
                     ${listsById(task.list_id).name}
                 </div>`:''}
                 <div id="${id}-name" class="name">${escapeHTML(task.name)}</div>
@@ -606,11 +606,11 @@ function sortTasks() {
         // as the right side, so tasks with the same due date are still sorted
         // by creation date
         'due': (a, b) => {
-            a = parseInt(a.dataset.dueTime) || new Date('9999-12-31').getTime();
-            b = parseInt(b.dataset.dueTime) || new Date('9999-12-31').getTime();
-            // a = parseFloat(`${a}.${a.dataset.id}`);
-            // b = parseFloat(`${b}.${b.dataset.id}`);
-            return a-b;
+            aDate = parseInt(a.dataset.dueTime) || new Date('9999-12-31').getTime();
+            bDate = parseInt(b.dataset.dueTime) || new Date('9999-12-31').getTime();
+            if (aDate == bDate) 
+                return parseInt(a.dataset.id)-parseInt(b.dataset.id);
+            return aDate-bDate;
         }
     }
     // Sort pending tasks
@@ -691,6 +691,10 @@ function changeActiveList(list, force = false) {
     document.title = list.name;
     activeList = list;
     localStorageObjSet('activeList', activeList);
+    // Update theme colour if light mode
+    if (theme == 'light') {
+        _qs('meta[name="theme-color"]').setAttribute('content', `hsl(${list.hue}, 75%, 95%)`);
+    }
     // Wait for animations to complete if needed
     changeListTimeout = setTimeout(async() => {
         // Update list display
@@ -866,7 +870,7 @@ function createListFolder() {
 function editList(list) {
     const doneId = randomHex();
     const hueCircleContId = randomHex();
-    const id = showPopup(`Edit <span style="color: var(--f85)">${list.name}</span>`, `
+    const id = showPopup(`Edit <span style="color: var(--f${(theme == 'light') ? 40:85})">${list.name}</span>`, `
         <div class="col">
             <div class="row">
                 <div class="input labeled" style="width: 100%">
@@ -970,7 +974,7 @@ function editTaskShowStep(step, focus = false) {
         <div id="${id}" class="step row gap-8 align-center no-wrap" data-pos="${step.sort_pos || 0}">
             <div id="${id}-radio" class="radio no-shrink" title="Mark step as ${(step.is_complete) ? 'in':''}complete"></div>
             <div id="${id}-input" class="name flex-grow" placeholder="New step..." contenteditable></div>
-            <button id="${id}-delete" class="btn small alt iconOnly noShadow delete no-shrink" title="Delete step">
+            <button id="${id}-delete" class="btn small alt iconOnly delete no-shrink" title="Delete step">
                 <div class="icon">close</div>
             </button>
             <div class="handle no-shrink"></div>
@@ -997,13 +1001,11 @@ function editTaskShowStep(step, focus = false) {
                 });
                 if (res.success) {
                     el.dataset.id = res.step.id;
-                    showToastConfirm('Step created!');
                 }
             } else {
                 res = await api.put(`steps/${stepId}/edit`, {
                     name: value
                 });
-                showToastConfirm('Step updated!');
             }
             if (res.success) {
                 showTask(res.task);
@@ -1074,12 +1076,12 @@ async function editTask(task, stayOpen = false) {
     if (task.id == activeTask.id && !stayOpen)
         return hideEditTask();
     activeTask = task;
-    _id('editTaskCont').classList.remove('changeColours');
+    _id('editTaskCard').classList.remove('changeColours');
     _id('editTaskListNameCont').classList.add('hidden');
     if (activeList.id == 'schedule') {
         const list = listsById(task.list_id);
-        _id('editTaskCont').classList.add('changeColours');
-        _id('editTaskCont').style.setProperty('--fgHue', list.hue);
+        _id('editTaskCard').classList.add('changeColours');
+        _id('editTaskCard').style.setProperty('--fgHue', list.hue);
         _id('editTaskListNameCont').classList.remove('hidden');
         _id('editTaskListName').innerText = list.name;
     }
@@ -1195,10 +1197,26 @@ async function openSettings() {
                     </div>
                 </div>
             </div>
-            <div class="col gap-0 hidden">
+            <div class="col gap-0">
                 <h5>Theme</h5>
                 <div class="col section exports">
-                    <p>Coming soon!</p>
+                    <div class="col gap-5">
+                        <div class="subtitle">Mode</div>
+                        <div class="row">
+                            <label class="selectOption">
+                                <input type="radio" name="themeMode" data-value="dark">
+                                Dark (recommended)
+                            </label>
+                            <label class="selectOption">
+                                <input type="radio" name="themeMode" data-value="light">
+                                Light
+                            </label>
+                            <label class="selectOption">
+                                <input type="radio" name="themeMode" data-value="auto">
+                                Use device settings
+                            </label>
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="col gap-0 hidden">
@@ -1232,9 +1250,19 @@ async function openSettings() {
         </div>
     `;
     on(_id('settingsSignOut'), 'click', promptSignOut);
+    loopEach(_qsa('input[name="themeMode"]'), (el) => {
+        if (theme == el.dataset.value
+          || isThemeAuto && el.dataset.value == 'auto')
+            el.checked = true;
+        on(el, 'change', () => {
+            if (el.checked) {
+                updateTheme(el.dataset.value);
+            }
+        });
+    });
     if (user.is_admin) {
         _id('settingsCont').insertAdjacentHTML('beforeend', `
-            <h4 style="color: var(--f90)">Admin zone</h4>
+            <h4 class="bigHeader">Admin zone</h4>
             <div class="col gap-0">
                 <h5>Manage allowed users</h5>
                 <div class="col gap-2">
@@ -1361,6 +1389,25 @@ async function openSettings() {
     }
 }
 
+let theme = localStorage.getItem('themeMode') || 'dark';
+let isThemeAuto = false;
+const updateTheme = (mode, hue = 200) => {
+    theme = mode;
+    isThemeAuto = (theme == 'auto') ? true : false;
+    localStorage.setItem('themeMode', mode);
+    if (theme == 'auto') {
+        if (window.matchMedia('(prefers-color-scheme: light)').matches)
+            theme = 'light';
+        else theme = 'dark';
+    }
+    if (theme == 'light') document.body.classList.add('light');
+    else {
+        document.body.classList.remove('light');
+        _qs('meta[name="theme-color"]').setAttribute('content', `hsl(230, 8%, 18%)`);
+    }
+    if (activeList) changeActiveList(activeList);
+};
+
 // Run once login is successful
 async function init() {
     // Catch any uncaught errors and present them to the user
@@ -1388,6 +1435,14 @@ async function init() {
         });
         return false;
     };
+    // Use user theme settings
+    updateTheme(theme);
+    // If user theme is auto, listen for device theme changes
+    if (isThemeAuto) {
+        on(window.matchMedia('(prefers-color-scheme: dark)'), 'change', () => {
+            updateTheme('auto');
+        });
+    }
     // Extend dayjs
     dayjs.extend(dayjs_plugin_advancedFormat);
     // Update profile elements
@@ -1432,7 +1487,11 @@ async function init() {
             icon: 'refresh',
             tooltip: `Clears the app cache and refreshes, forcing any pending updates to be applied.`,
             action: async() => {
-                showPopup('Refreshing', `Clearing app cache, hang tight...`);
+                const toastId = showToast({
+                    icon: 'refresh',
+                    body: `Refreshing...`,
+                    delay: 0, noClose: true
+                });
                 await caches.delete('assets');
                 window.location.reload();
             }
@@ -1595,7 +1654,6 @@ async function init() {
                     if (tasks[i].id == activeTask.id)
                         tasks[i] = activeTask;
                 });
-                showToastConfirm('Task name updated!');
             }
         }, 500);
     });
@@ -1630,7 +1688,6 @@ async function init() {
                     if (tasks[i].id == activeTask.id)
                         tasks[i] = activeTask;
                 });
-                showToastConfirm('Step order updated!');
             }
         }
     });
@@ -1688,7 +1745,6 @@ async function init() {
                     if (tasks[i].id == activeTask.id)
                         tasks[i] = activeTask;
                 });
-                showToastConfirm('Task notes updated!');
             }
         }, 500);
     });

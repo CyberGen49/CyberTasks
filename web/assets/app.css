@@ -520,6 +520,9 @@ body {
     -webkit-box-orient: vertical;
     overflow: hidden;
 }
+#tasksCont .tasks .task .label .desc.listName {
+    color: var(--f80);
+}
 #tasksCont .tasks .task .label .stats {
     color: var(--b80);
 }
@@ -743,6 +746,9 @@ body {
 #settingsCont > .col > .desc {
     padding-top: 8px;
 }
+#settingsCont .bigHeader {
+    color: var(--f90);
+}
 #settingsCont .section {
     padding: 15px;
     background: var(--b20);
@@ -755,6 +761,9 @@ body {
 #settingsCont .section:last-of-type {
     border-bottom-left-radius: 20px;
     border-bottom-right-radius: 20px;
+}
+#settingsCont .section .subtitle {
+    color: var(--b70);
 }
 #settingsCont .account img {
     --w: 110px;

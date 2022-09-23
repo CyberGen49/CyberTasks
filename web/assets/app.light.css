@@ -1,0 +1,199 @@
+
+/* CyberTasks light mode styling */
+
+.light #login {
+    background: var(--b100);
+}
+
+.light #toastCont .toast {
+    background: var(--b90);
+    border-color: var(--f45);
+    box-shadow: 0px 4px 12px 0px rgba(0, 0, 0, 0.2);
+}
+.light #toastCont .toast > .icon {
+    color: var(--b40);
+}
+
+.light #sidebar {
+    background: var(--b100);
+    box-shadow: 2px 0px 5px 0px rgba(0, 0, 0, 0.1);
+}
+.light #sidebar .top .title {
+    color: var(--f40);
+    text-shadow: none;
+}
+.light #sidebar .top .title span {
+    color: var(--b40);
+}
+.light #sidebar .profileCard {
+    background: var(--b95);
+}
+.light .userEntry .nameCont {
+    color: var(--b20);
+}
+.light .userEntry .nameCont .discriminator {
+    color: var(--b40);
+}
+.light .userEntry .desc {
+    color: var(--b50);
+}
+
+.light #sidebar .listEntry {
+    color: var(--b20);
+}
+.light #sidebar .listEntry::before {
+    color: var(--f45);
+}
+.light #sidebar .listEntry .handle::before,
+.light #sidebar .listFolder .handle::before {
+    color: var(--b50);
+}
+.light.canHover #sidebar .listEntry:hover,
+.light #sidebar .listEntry:focus-visible {
+    background: var(--b85);
+    box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.1);
+}
+.light #sidebar .listEntry:active {
+    background: var(--b80) !important;
+    box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.2);
+}
+.light #sidebar .listFolder {
+    color: var(--b50);
+}
+.light #listCont {
+    background: var(--f90);
+}
+.light #listCont > .topbar {
+    background: var(--f90);
+    color: var(--f40);
+}
+.light.canHover #listCont .btn.alt2:hover:not(:disabled),
+.light #listCont .btn.alt2:focus-visible:not(:disabled) {
+    color: var(--f40) !important;
+    background: var(--f80) !important;
+    box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.1) !important;
+}
+.light #listCont .btn.alt2:active:not(:disabled),
+.light #listCont .btn.alt2.active {
+    color: var(--f35) !important;
+    background: var(--f75) !important;
+}
+.light #tasksCont .header #listHeaderTitle {
+    color: var(--f40);
+}
+.light #tasksCont .empty {
+    color: var(--b40);
+}
+.light #tasksCont .tasks .task {
+    background: var(--f100);
+}
+.light.canHover #tasksCont .tasks .task:hover,
+.light #tasksCont .tasks .task:focus-visible {
+    background: var(--f95);
+}
+.light #tasksCont .tasks .task:active {
+    background: var(--f85) !important;
+}
+.light #tasksCont .tasks .task .radio:after,
+.light #addTaskBox .radio:after,
+.light #editTaskCard .taskNameCont .radio::after,
+.light #editTaskCard #steps .step .radio::after {
+    color: var(--b50);
+}
+.light.canHover #tasksCont .tasks .task .radio:hover:after,
+.light #tasksCont .tasks .task .radio:focus-visible:after,
+.light #tasksCont .tasks .task .radio:active:after,
+.light.canHover #editTaskCard #steps .step .radio:hover::after {
+    color: var(--f40) !important;
+}
+.light #tasksCont .tasks .task.complete .radio:after,
+.light #editTaskCard .taskNameCont .radio.complete::after,
+.light #editTaskCard #steps .step.complete .radio::after {
+    color: var(--f40);
+}
+.light.canHover #tasksCont .tasks .task.complete .radio:hover:after,
+.light #tasksCont .tasks .task.complete .radio:focus-visible:after,
+.light #tasksCont .tasks .task.complete .radio:active:after,
+.light.canHover #editTaskCard #steps .step.complete .radio:hover::after {
+    color: var(--b50) !important;
+}
+.light #tasksCont .tasks .task.complete .label .name,
+.light #editTaskCard #steps .step.complete .name:not(:focus) {
+    color: var(--b50);
+}
+.light #tasksCont .tasks .task .label .desc {
+    color: var(--b40);
+}
+.light #tasksCont .tasks .task .label .desc.listName {
+    color: var(--f40);
+}
+.light #tasksCont .tasks .task .label .stats {
+    color: var(--b45);
+}
+.light #tasksCont .tasks .task:not(.complete) .label .stats .dueDate.today {
+    color: var(--f40);
+}
+.light #tasksCont .tasks .task .label .stats .steps.complete {
+    color: var(--f40);
+}
+.light #addTaskBox {
+    background: var(--b100);
+    box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.1);
+}
+.light.canHover #addTaskBox:hover,
+.light #addTaskBox:focus-within {
+    background: var(--f95);
+}
+
+.light #editTaskCont {
+    background: var(--f90);
+}
+@media screen and (max-width: 800px) {
+    .light #editTaskCont {
+        background: rgba(0, 0, 0, 0.5) !important;
+    }
+}
+.light #editTaskCont #editTaskCard {
+    background: var(--f100);
+    box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.2);
+}
+.light #editTaskCard .topbar .title {
+    color: var(--f40);
+}
+.light #editTaskCard .section {
+    background: var(--f95);
+}
+.light #editTaskCard .editTaskDescCont .label {
+    color: var(--b50);
+}
+.light #editTaskCard #steps .step .handle::before {
+    color: var(--b50);
+}
+.light #editTaskCard #dueDateText {
+    color: var(--f40);
+}
+
+.light #settingsCont .bigHeader {
+    color: var(--f40);
+}
+.light #settingsCont .section {
+    background: var(--b95);
+}
+.light #settingsCont .section .subtitle {
+    color: var(--b50);
+}
+.light #settingsCont .account .nameCont .discriminator {
+    color: var(--b50);
+}
+.light #settingsCont .account .created {
+    color: var(--b40);
+}
+
+.light .hueCircle {
+    background: var(--f60);
+    box-shadow: 0px 2px 3px 1px rgba(0, 0, 0, 0.2);
+}
+.light.canHover .hueCircle:hover:not(.selected),
+.light .hueCircle:focus-visible:not(.selected) {
+    background: var(--f70);
+}
