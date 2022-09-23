@@ -149,7 +149,7 @@
     }
 }
 .light #editTaskCont #editTaskCard {
-    background: var(--f95);
+    background: var(--f85);
     box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.2);
 }
 .light #editTaskCard .topbar .title {

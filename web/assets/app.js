@@ -290,7 +290,7 @@ async function updateLists(force = false) {
     }
     const listsCombo = [{
         id: 'schedule',
-        hue: 200,
+        hue: parseInt(document.body.style.getPropertyValue('--fgHue')),
         name: 'Scheduled tasks',
         sort_order: 'due',
         sort_reverse: 0
@@ -345,10 +345,10 @@ async function updateLists(force = false) {
                                 <p style="color: var(--danger)">This action can't be undone!</p>
                             `, [{
                                 label: 'No',
+                                primary: true,
                                 escape: true
                             }, {
                                 label: 'Yes',
-                                primary: true,
                                 action: async() => {
                                     const res = await api.delete(`lists/${list.id}/delete`);
                                     if (res.success) {
@@ -393,10 +393,10 @@ async function updateLists(force = false) {
                                 <p>Your lists won't be affected.</p>
                             `, [{
                                 label: 'No',
+                                primary: true,
                                 escape: true
                             }, {
                                 label: 'Yes',
-                                primary: true,
                                 action: async() => {
                                     const res = await api.delete(`lists/folders/${list.id}/delete`);
                                     if (res.success) {
@@ -491,10 +491,10 @@ function showTask(task) {
                     <p style="color: var(--danger)">This action can't be undone!</p>
                 `, [{
                     label: 'No',
+                    primary: true,
                     escape: true
                 }, {
                     label: 'Yes',
-                    primary: true,
                     action: async() => {
                         _id(id).style.display = 'none';
                         const res = await api.delete(`tasks/${task.id}/delete`);
@@ -974,7 +974,7 @@ function editTaskShowStep(step, focus = false) {
         <div id="${id}" class="step row gap-8 align-center no-wrap" data-pos="${step.sort_pos || 0}">
             <div id="${id}-radio" class="radio no-shrink" title="Mark step as ${(step.is_complete) ? 'in':''}complete"></div>
             <div id="${id}-input" class="name flex-grow" placeholder="New step..." contenteditable></div>
-            <button id="${id}-delete" class="btn small alt iconOnly delete no-shrink" title="Delete step">
+            <button id="${id}-delete" class="btn small alt iconOnly delete" title="Delete step">
                 <div class="icon">close</div>
             </button>
             <div class="handle no-shrink"></div>
@@ -1138,10 +1138,10 @@ function hideEditTask() {
 async function promptSignOut() {
     showPopup('Sign out?', `Are you sure you want to sign out? Any unsaved changes will be lost.`, [{
         label: 'No',
+        primary: true,
         escape: true
     }, {
         label: 'Yes',
-        primary: true,
         action: async() => {
             showToast({
                 icon: 'logout',
@@ -1200,12 +1200,12 @@ async function openSettings() {
             <div class="col gap-0">
                 <h5>Theme</h5>
                 <div class="col section exports">
-                    <div class="col gap-5">
+                    <div class="col gap-8">
                         <div class="subtitle">Mode</div>
-                        <div class="row">
+                        <div class="row sm gap-10">
                             <label class="selectOption">
                                 <input type="radio" name="themeMode" data-value="dark">
-                                Dark (recommended)
+                                Dark
                             </label>
                             <label class="selectOption">
                                 <input type="radio" name="themeMode" data-value="light">
@@ -1266,13 +1266,15 @@ async function openSettings() {
             <div class="col gap-0">
                 <h5>Manage allowed users</h5>
                 <div class="col gap-2">
-                    <div class="section row align-center">
-                        <button id="allowUserAdd" class="btn">
-                            <div class="icon">person_add</div>
-                            Add user...
-                        </button>
-                        <div class="flex-grow">
-                            <small id="allowUserCount"></small>
+                    <div class="section row align-center no-wrap">
+                        <div class="row align-center flex-grow">
+                            <button id="allowUserAdd" class="btn">
+                                <div class="icon">person_add</div>
+                                Add user...
+                            </button>
+                            <div class="flex-grow">
+                                <small id="allowUserCount"></small>
+                            </div>
                         </div>
                         <button id="allowUserRefresh" class="btn alt iconOnly" title="Refresh allowed users list">
                             <div class="icon">refresh</div>
@@ -1317,10 +1319,10 @@ async function openSettings() {
                 on(_id(removeId), 'click', () => {
                     showPopup(`Remove user`, `Are you sure you want to revoke <b>${user.username}#${user.discriminator}</b>'s access to CyberTasks?`, [{
                         label: 'No',
+                        primary: true,
                         escape: true
                     }, {
                         label: 'Yes',
-                        primary: true,
                         action: async() => {
                             await api.delete('users/allowed/remove', {
                                 id: user.id
@@ -1389,7 +1391,7 @@ async function openSettings() {
     }
 }
 
-let theme = localStorage.getItem('themeMode') || 'dark';
+let theme = localStorage.getItem('themeMode') || 'auto';
 let isThemeAuto = false;
 const updateTheme = (mode, hue = 200) => {
     theme = mode;
@@ -1407,6 +1409,14 @@ const updateTheme = (mode, hue = 200) => {
     }
     if (activeList) changeActiveList(activeList);
 };
+// Use user theme settings
+updateTheme(theme);
+// If user theme is auto, listen for device theme changes
+if (isThemeAuto) {
+    on(window.matchMedia('(prefers-color-scheme: dark)'), 'change', () => {
+        updateTheme('auto');
+    });
+}
 
 // Run once login is successful
 async function init() {
@@ -1435,14 +1445,6 @@ async function init() {
         });
         return false;
     };
-    // Use user theme settings
-    updateTheme(theme);
-    // If user theme is auto, listen for device theme changes
-    if (isThemeAuto) {
-        on(window.matchMedia('(prefers-color-scheme: dark)'), 'change', () => {
-            updateTheme('auto');
-        });
-    }
     // Extend dayjs
     dayjs.extend(dayjs_plugin_advancedFormat);
     // Update profile elements
@@ -1472,10 +1474,10 @@ async function init() {
                     <p style="color: var(--danger)">Your access token grants <b>full access</b> to your account, including all lists and tasks, active sessions, and account settings. <b>Never give this token to anyone.</b></p>
                 `, [{
                     label: 'Cancel',
+                    primary: true,
                     escape: true
                 }, {
                     label: 'Copy',
-                    primary: true,
                     action: () => {
                         copyText(token);
                     }
