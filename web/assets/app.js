@@ -1754,6 +1754,21 @@ async function init() {
     on(window, 'resize', () => {
         _id('listScrollArea').dispatchEvent(new Event('scroll'));
     });
+    // Handle keyboard shortcuts
+    on(window, 'keydown', (e) => {
+        if (e.ctrlKey && e.code == 'KeyS') {
+            e.preventDefault();
+            openSettings();
+        }
+        if (e.ctrlKey && e.code == 'KeyM') {
+            e.preventDefault();
+            if (_id('sidebar').classList.contains('visible'))
+                _id('menuClose').click();
+            else
+                _id('menuOpen').click();
+        }
+        return false;
+    });
     // Handle refreshing
     const lastRefresh = {
         get: () => { return localStorageObjGet('lastRefresh').time },
