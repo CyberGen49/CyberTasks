@@ -813,10 +813,6 @@ body {
     transform: scale(0.9) !important;
 }
 
-::-webkit-scrollbar {
-    background: transparent;
-}
-
 .popupCont {
     backdrop-filter: blur(8px);
 }

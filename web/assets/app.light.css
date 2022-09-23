@@ -6,8 +6,8 @@
 }
 
 .light #toastCont .toast {
-    background: var(--b90);
-    border-color: var(--f45);
+    background: var(--b100);
+    border-color: var(--f50);
     box-shadow: 0px 4px 12px 0px rgba(0, 0, 0, 0.2);
 }
 .light #toastCont .toast > .icon {
@@ -26,7 +26,7 @@
     color: var(--b40);
 }
 .light #sidebar .profileCard {
-    background: var(--b95);
+    background: var(--f95);
 }
 .light .userEntry .nameCont {
     color: var(--b20);
@@ -50,11 +50,11 @@
 }
 .light.canHover #sidebar .listEntry:hover,
 .light #sidebar .listEntry:focus-visible {
-    background: var(--b85);
+    background: var(--f90);
     box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.1);
 }
 .light #sidebar .listEntry:active {
-    background: var(--b80) !important;
+    background: var(--f85) !important;
     box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.2);
 }
 .light #sidebar .listFolder {
@@ -67,22 +67,14 @@
     background: var(--f90);
     color: var(--f40);
 }
-.light.canHover #listCont .btn.alt2:hover:not(:disabled),
-.light #listCont .btn.alt2:focus-visible:not(:disabled) {
-    color: var(--f40) !important;
-    background: var(--f80) !important;
-    box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.1) !important;
-}
-.light #listCont .btn.alt2:active:not(:disabled),
-.light #listCont .btn.alt2.active {
-    color: var(--f35) !important;
-    background: var(--f75) !important;
+.light #listCont > .topbar.scrolled {
+    box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.1);
 }
 .light #tasksCont .header #listHeaderTitle {
     color: var(--f40);
 }
 .light #tasksCont .empty {
-    color: var(--b40);
+    color: var(--f40);
 }
 .light #tasksCont .tasks .task {
     background: var(--f100);
@@ -137,12 +129,15 @@
     color: var(--f40);
 }
 .light #addTaskBox {
-    background: var(--b100);
+    background: var(--f95);
     box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.1);
+}
+.light #addTaskCont.scrolled {
+    box-shadow: 0px -2px 5px 0px rgba(0, 0, 0, 0.1);
 }
 .light.canHover #addTaskBox:hover,
 .light #addTaskBox:focus-within {
-    background: var(--f95);
+    background: var(--b100);
 }
 
 .light #editTaskCont {
@@ -154,14 +149,14 @@
     }
 }
 .light #editTaskCont #editTaskCard {
-    background: var(--f100);
+    background: var(--f95);
     box-shadow: 0px 2px 5px 0px rgba(0, 0, 0, 0.2);
 }
 .light #editTaskCard .topbar .title {
     color: var(--f40);
 }
 .light #editTaskCard .section {
-    background: var(--f95);
+    background: var(--f100);
 }
 .light #editTaskCard .editTaskDescCont .label {
     color: var(--b50);

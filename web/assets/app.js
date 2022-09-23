@@ -1607,7 +1607,7 @@ async function init() {
             el.scrollIntoView();
             el.style.transitionDuration = '0.6s';
             await sleep(50);
-            el.style.background = 'var(--b30)';
+            el.style.background = `var(--${(theme == 'light') ? 'f85':'b30'})`;
             await sleep(1000);
             el.style.background = '';
             await sleep(600);
