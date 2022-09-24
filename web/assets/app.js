@@ -1264,7 +1264,7 @@ async function openSettings() {
         _id('settingsCont').insertAdjacentHTML('beforeend', `
             <h4 class="bigHeader">Admin zone</h4>
             <div class="col gap-0">
-                <h5>Manage allowed users</h5>
+                <h5>Manage allowed ${(isDev) ? 'development':''} users</h5>
                 <div class="col gap-2">
                     <div class="section row align-center no-wrap">
                         <div class="row align-center flex-grow">

@@ -84,7 +84,7 @@ srv.use((req, res, next) => {
 
 // Set static files folder
 srv.use(express.static('web', {
-    index: 'app.html'
+    index: [ 'index.html', 'app.html' ]
 }));
 
 // Add middleware to all API requests
