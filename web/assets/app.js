@@ -147,6 +147,9 @@ function dueDateFormat(date) {
         return dayjs(date).format('ddd, MMM Do, YYYY');
     return dayjs(date).format('ddd, MMM Do');
 }
+function dueDateFormatLong(date) {
+    return dayjs(date).format('dddd, MMMM Do, YYYY');
+}
 
 function addHueCircles(el, parent) {
     let hueCircles = [];
@@ -430,12 +433,14 @@ function showTask(task) {
     if (activeList.id == 'schedule' && !task.due_date_time) return;
     let stats = [];
     if (task.due_date) {
-        const diff = dueDateDiff(new Date(task.due_date));
-        const dateText = dueDateFormat(new Date(task.due_date));
+        const date = new Date(task.due_date);
+        const diff = dueDateDiff(date);
+        const dateText = dueDateFormat(date);
+        const dateTooltip = dueDateFormatLong(date);
         stats.push(`
             <div class="dueDate row align-center gap-5 no-wrap ${dateText.toLowerCase()} ${(diff > 0) ? 'overdue':''}">
                 <div class="icon">event</div>
-                <div>Due ${dateText}</div>
+                <div title="Due on ${dateTooltip}">Due ${dateText}</div>
             </div>
         `);
     }
@@ -534,6 +539,14 @@ function showTask(task) {
             type: 'item',
             name: 'Set due date...',
             icon: 'edit_calendar',
+            disabled: true,
+            action: () => {
+                // ...
+            }
+        }, {
+            type: 'item',
+            name: 'Set importance...',
+            icon: 'priority_high',
             disabled: true,
             action: () => {
                 // ...
