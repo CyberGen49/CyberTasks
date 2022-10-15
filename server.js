@@ -745,6 +745,32 @@ srv.get('/discord-login', async(req, res) => {
     res.json({ token: token });
 });
 
+// Handle changelogs
+srv.use('/changelogs', express.static('./changelogs'));
+srv.get(`/changelogs`, (req, res) => {
+    res.json(fs.readdirSync('./changelogs')); 
+});
+srv.get(`/changelogs/latest`, (req, res) => {
+    const files = fs.readdirSync('./changelogs');
+    files.reverse();
+    res.json({
+        name: files[0],
+        content: fs.readFileSync(`./changelogs/${files[0]}`, 'utf-8')
+    });
+});
+srv.get(`/changelogs/all`, (req, res) => {
+    const files = fs.readdirSync('./changelogs');
+    files.reverse();
+    let out = [];
+    for (const file of files) {
+        out.push({
+            name: file,
+            content: fs.readFileSync(`./changelogs/${file}`, 'utf-8')
+        });
+    }
+    res.json(out);
+});
+
 // Handle Discord server invite redirect
 if (credentials.discord_invite) {
     srv.get('/discord', (req, res) => {
