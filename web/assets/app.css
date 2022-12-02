@@ -574,6 +574,7 @@ body {
     overflow-y: auto;
     overflow-x: hidden;
     word-break: break-word;
+    text-overflow: clip;
 }
 #addTaskBox .input:focus-visible {
     outline: none;
