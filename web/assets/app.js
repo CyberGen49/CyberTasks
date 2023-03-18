@@ -1461,7 +1461,7 @@ async function init() {
     // Extend dayjs
     dayjs.extend(dayjs_plugin_advancedFormat);
     // Update profile elements
-    _id('avatar').src = `https://cdn.discordapp.com/avatars/${user.discord_id}/${user.picture}.png?size=512`;
+    _id('avatar').src = `https://discordusers.simplecyber.org/u/${user.discord_id}/avatar`;
     _id('username').innerText = user.name;
     _id('discriminator').innerText = `#${user.discriminator}`;
     // Show sidebar dev splash if needed
